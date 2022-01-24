@@ -1,8 +1,8 @@
 # Maintainer: 7thCore
 
 pkgname=mcsrv-script
-pkgver=1.1
-pkgrel=2
+pkgver=1.2
+pkgrel=1
 pkgdesc='Minecraft server script for running the server on linux.'
 arch=('x86_64')
 license=('GPL3')
@@ -43,7 +43,7 @@ source=('bash_profile'
 sha256sums=('f1e2f643b81b27d16fe79e0563e39c597ce42621ae7c2433fd5b70f1eeab5d63'
             'b3f4ba2d85adc3f77e85ed704f78ba3fcf603485b42bd24fdfe0eb7cf4c7233f'
             '85792a07aa66663a8428006e454c7949c932a0f0796ccf60111c1a368a845fb8'
-            '6e3c26a88b204bca53b86c77704fd7bea375cadff1576ee14766ac473cca3bca'
+            'b1b48c595d028eba6953d8e85ccbbb2e4960356388c45c3b8acbb68a6df67a92'
             '0e533328a50d12981fc0624288234821175b5970363a6e2ba1de50bc0b2ccb8e'
             '0053895ef4c8d43715a3f8641b2381dca36717fa2f30f0db0f0606616088c460'
             'b9ea717b05244d78c136e05c7d340903fa81986a96dd47d8ce2294a0670e63e2'
