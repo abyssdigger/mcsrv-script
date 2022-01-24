@@ -1,0 +1,6 @@
+[Unit]
+Description=McSrv Script Send Email notification Service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mcsrv-script send_notification_crash %i

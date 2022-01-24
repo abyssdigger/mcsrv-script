@@ -1,0 +1,38 @@
+[Unit]
+Description=Minecraft Forge TmpFs Server Service
+Requires=mcsrv-mkdir-tmpfs.service
+After=network.target mnt-tmpfs.mount mcsrv-mkdir-tmpfs.service
+Conflicts=mcsrv-forge@.service
+StartLimitBurst=3
+StartLimitIntervalSec=300
+StartLimitAction=none
+OnFailure=mcsrv-send-notification@.service
+
+[Service]
+Type=forking
+WorkingDirectory=/srv/mcsrv/tmpfs/%i
+ExecStartPre=/usr/bin/mcsrv-script server_tmux_install %i
+ExecStartPre=/usr/bin/mcsrv-script send_notification_start_initialized %i
+ExecStartPre=/usr/bin/rsync -aAVx --info=progress2 /srv/mcsrv/%i/ /srv/mcsrv/tmpfs/%i
+ExecStart=/usr/bin/tmux -f /tmp/%u-%i-mcsrv-tmux.conf -L %u-%i-tmux.sock new-session -d -s McSrv 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar $(ls -v /srv/mcsrv/tmpfs/%i | grep -i "forge" | grep -i ".jar" | head -n 1)'
+ExecStartPost=/usr/bin/mcsrv-script send_notification_start_complete %i
+ExecStop=/usr/bin/mcsrv-script send_notification_stop_initialized %i
+ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'say SERVER SHUTTING DOWN IN 10!' ENTER
+ExecStop=/usr/bin/sleep 5
+ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'SERVER SHUTTING DOWN IN 5!' ENTER
+ExecStop=/usr/bin/sleep 5
+ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'say SERVER SHUTTING DOWN NOW!' ENTER
+ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'save-all' ENTER
+ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'stop' ENTER
+ExecStop=/usr/bin/sleep 10
+ExecStop=/usr/bin/rsync -aAVx --info=progress2 /srv/mcsrv/tmpfs/%i/ /srv/mcsrv/%i
+ExecStopPost=/usr/bin/rm /tmp/%u-%i-mcsrv-tmux.log
+ExecStopPost=/usr/bin/rm /tmp/%u-%i-mcsrv-tmux.conf
+ExecStopPost=/usr/bin/mcsrv-script send_notification_stop_complete %i
+TimeoutStartSec=infinity
+TimeoutStopSec=120
+RestartSec=10
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
