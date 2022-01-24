@@ -1,11 +1,27 @@
 #!/bin/bash
 
+#    Copyright (C) 2022 7thCore
+#    This file is part of McSrv-Script.
+#
+#    McSrv-Script is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    McSrv-Script is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #Minecraft server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 
 #Basics
 NAME="McSrv" #Name of the tmux session
-VERSION="1.0-1" #Package and script version
+VERSION="1.1-2" #Package and script version
 
 #Server configuration
 SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log
@@ -311,16 +327,19 @@ script_attach() {
 #Disable all script services
 script_disable_services() {
 	script_logs
+	IFS=","
 	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		if [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			systemctl --user disable $SERVER_SERVICE
 		fi
 	done
+	IFS=","
 	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		if [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			systemctl --user disable $SERVER_SERVICE
 		fi
 	done
+	IFS=","
 	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-mkdir-tmpfs@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		if [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			systemctl --user disable $SERVER_SERVICE
@@ -1459,40 +1478,28 @@ script_diagnostics() {
 	fi
 	
 	#Check if files/folders present
-	if [ -f "$SCRIPT_DIR/$SCRIPT_NAME" ] ; then
-		echo "Script installed: Yes"
+	if [ -f "/usr/bin/$SERVICE_NAME-script" ] ; then
+		echo "Script present: Yes"
 	else
-		echo "Script installed: No"
+		echo "Script present: No"
 	fi
 	
-	if [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ] ; then
-		echo "Configuration file present: Yes"
+	if [ -d "/srv/$SERVICE_NAME/config" ]; then
+		echo "Configuration folder present: Yes"
 	else
-		echo "Configuration file present: No"
+		echo "Configuration folder present: No"
 	fi
-	
+
 	if [ -d "/srv/$SERVICE_NAME/backups" ]; then
 		echo "Backups folder present: Yes"
 	else
 		echo "Backups folder present: No"
 	fi
-	
+
 	if [ -d "/srv/$SERVICE_NAME/logs" ]; then
 		echo "Logs folder present: Yes"
 	else
 		echo "Logs folder present: No"
-	fi
-	
-	if [ -d "/srv/$SERVICE_NAME/scripts" ]; then
-		echo "Scripts folder present: Yes"
-	else
-		echo "Scripts folder present: No"
-	fi
-	
-	if [ -d "/srv/$SERVICE_NAME/server" ]; then
-		echo "Server folder present: Yes"
-	else
-		echo "Server folder present: No"
 	fi
 	
 	if [ -d "/srv/$SERVICE_NAME/updates" ]; then
@@ -1500,44 +1507,68 @@ script_diagnostics() {
 	else
 		echo "Updates folder present: No"
 	fi
+
+	if [ -f "$CONFIG_DIR/$SERVICE_NAME-script.conf" ] ; then
+		echo "Script configuration file present: Yes"
+	else
+		echo "Script configuration file present: No"
+	fi
+
+	if [ -f "$CONFIG_DIR/$SERVICE_NAME-steam.conf" ] ; then
+		echo "Steam configuration file present: Yes"
+	else
+		echo "Steam configuration file present: No"
+	fi
+
+	if [ -f "$CONFIG_DIR/$SERVICE_NAME-discord.conf" ] ; then
+		echo "Discord configuration file present: Yes"
+	else
+		echo "Discord configuration file present: No"
+	fi
+
+	if [ -f "$CONFIG_DIR/$SERVICE_NAME-email.conf" ] ; then
+		echo "Email configuration file present: Yes"
+	else
+		echo "Email configuration file present: No"
+	fi
 	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-mkdir-tmpfs.service" ]; then
+	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-mkdir-tmpfs@.service" ]; then
 		echo "Tmpfs mkdir service present: Yes"
 	else
 		echo "Tmpfs mkdir service present: No"
 	fi
 	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs-vanilla.service" ]; then
+	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs-vanilla@.service" ]; then
 		echo "Tmpfs service for vanilla present: Yes"
 	else
 		echo "Tmpfs service for vanilla present: No"
 	fi
 	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-vanilla.service" ]; then
+	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-vanilla@.service" ]; then
 		echo "Basic service for vanilla present: Yes"
 	else
 		echo "Basic service for vanilla present: No"
 	fi
 	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs-spigot.service" ]; then
+	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs-spigot@.service" ]; then
 		echo "Tmpfs service for spigot present: Yes"
 	else
 		echo "Tmpfs service for spigot present: No"
 	fi
 	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-spigot.service" ]; then
+	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-spigot@.service" ]; then
 		echo "Basic service for spigot present: Yes"
 	else
 		echo "Basic service for spigot present: No"
 	fi
 	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs-forge.service" ]; then
+	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs-forge@.service" ]; then
 		echo "Tmpfs service for forge present: Yes"
 	else
 		echo "Tmpfs service for forge present: No"
 	fi
 	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-forge.service" ]; then
+	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-forge@.service" ]; then
 		echo "Basic service for forge present: Yes"
 	else
 		echo "Basic service for forge present: No"
@@ -1567,13 +1598,13 @@ script_diagnostics() {
 		echo "Timer 2 service present: No"
 	fi
 	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-serversync.service" ]; then
+	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-serversync@.service" ]; then
 		echo "ServerSync service present: Yes"
 	else
 		echo "ServerSync service present: No"
 	fi
 	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-send-notification.service" ]; then
+	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-send-notification@.service" ]; then
 		echo "Notification sending service present: Yes"
 	else
 		echo "Notification sending service present: No"
@@ -1923,6 +1954,7 @@ case "$1" in
 		echo -e "${GREEN}update                         ${RED}- ${GREEN}Update the server, if the server is running it will save it, shut it down, update it and restart it.${NC}"
 		echo -e "${GREEN}update_spigot <server number>  ${RED}- ${GREEN}Update the server, if the server is running it will save it, shut it down, update it and restart it.${NC}"
 		echo -e "${GREEN}delete_save                    ${RED}- ${GREEN}Delete the server's save game with the option for deleting/keeping the server.json and other server files.${NC}"
+		echo ""
 		;;
 #---------------------------
 #Basic script functions
