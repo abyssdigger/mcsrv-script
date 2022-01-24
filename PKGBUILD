@@ -1,10 +1,11 @@
 # Maintainer: 7thCore
 
 pkgname=mcsrv-script
-pkgver=1.0
-pkgrel=1
+pkgver=1.1
+pkgrel=2
 pkgdesc='Minecraft server script for running the server on linux.'
 arch=('x86_64')
+license=('GPL3')
 depends=('bash'
          'coreutils'
          'sudo'
@@ -23,39 +24,37 @@ depends=('bash'
          'jq'
          'samba'
          'jre-openjdk-headless')
-backup=('')
 install=mcsrv-script.install
-source=('mcsrv-script.bash'
-        'mcsrv-timer-1.timer'
-        'mcsrv-timer-1.service'
-        'mcsrv-timer-2.timer'
-        'mcsrv-timer-2.service'
-        'mcsrv-send-notification@.service'
-        'mcsrv-vanilla@.service'
+source=('bash_profile'
         'mcsrv-forge@.service'
-        'mcsrv-spigot@.service'
         'mcsrv-mkdir-tmpfs@.service'
-        'mcsrv-tmpfs-vanilla@.service'
+        'mcsrv-script.bash'
+        'mcsrv-send-notification@.service'
+        'mcsrv-serversync@.service'
+        'mcsrv-spigot@.service'
+        'mcsrv-timer-1.service'
+        'mcsrv-timer-1.timer'
+        'mcsrv-timer-2.service'
+        'mcsrv-timer-2.timer'
         'mcsrv-tmpfs-forge@.service'
         'mcsrv-tmpfs-spigot@.service'
-        'mcsrv-serversync@.service'
-        'bash_profile')
-noextract=('')
-sha256sums=('9a51538ca53b0d5f75b3245c2e18277737000f4c1fe298c0bee9489aa44e3a13'
-            '4bf64f7a529c426d54e5cdd1cb97491d9187d0526fb78611f15d324c55a203bd'
-            '9d846d83d7a6070f326761e9252a8cd0e1130d4e5983b8fccf4dd5bde5211d49'
-            '7eefa11eb40c25bd18c6b4fb85abe2e887090a290c948980006d4ad9f25f2ddb'
-            '2f21db90cbe469ce52466dbe85f67df21f1c899d456a902a1fafefd48826e99f'
-            'dd10a8657ad0287cb8af5fe0bc76609a8844340aeb86035a252a5bbf47acdde7'
-            '96b8c6498c1406284df0c648a76f0350449f5beee71523f9434bf30e62da2abe'
-            '177bae6c347302067eddd52d2c32e819d152e443b3dc4fc70ed35945026d24b8'
-            '2b6fa6b9fa173c3c2f91f818e3d139513078ce8f9a181e1d02a92ffe48b87d47'
-            '80d949814a2a6b3cc86d4457b0060570e12bbd523aaf34dc60191e361f51a3c6'
-            '7cfa80adffa9326e60c6ca3849747ae2b79e9dfd4b7645229378429e41d00bb7'
-            'f1f346de0484938911688f50cc515551e1707a3e2d5c5a4917a563cdfc9a3e52'
-            '97f5c7762c0c27993d439191f23b1365734bce276a60eb6c176cc1e0fde1003f'
-            '774a77411c6f4fde56610cb3cbd2e09acd615467a9aa02974ac11dea35593b0d'
-            'f1e2f643b81b27d16fe79e0563e39c597ce42621ae7c2433fd5b70f1eeab5d63')
+        'mcsrv-tmpfs-vanilla@.service'
+        'mcsrv-vanilla@.service')
+sha256sums=('f1e2f643b81b27d16fe79e0563e39c597ce42621ae7c2433fd5b70f1eeab5d63'
+            'b3f4ba2d85adc3f77e85ed704f78ba3fcf603485b42bd24fdfe0eb7cf4c7233f'
+            '85792a07aa66663a8428006e454c7949c932a0f0796ccf60111c1a368a845fb8'
+            '6e3c26a88b204bca53b86c77704fd7bea375cadff1576ee14766ac473cca3bca'
+            '0e533328a50d12981fc0624288234821175b5970363a6e2ba1de50bc0b2ccb8e'
+            '0053895ef4c8d43715a3f8641b2381dca36717fa2f30f0db0f0606616088c460'
+            'b9ea717b05244d78c136e05c7d340903fa81986a96dd47d8ce2294a0670e63e2'
+            '21b627f1fb96a41bbd084bac92a99d0f94085a07d9acb8c01f15007535feef10'
+            '5116c82874543bd11f4976495fb30075fd076115ad877fcecb8e1a6a97f5471e'
+            'e96dd020900db19d3932d5f83a69cad0222ccfdc99f72e6be57ebfb32fbedf6f'
+            '59bb73d65729d1b8919d3ed0b3cbc7603b42499a1cdd7aaa5ad9f96d733f531b'
+            'ce00da21a2f9dba358a3bdce27066b9c8f42186cd2eb1e8817ac6060f4597c0f'
+            '27748d2a37d53b59e8cd4cc458c73dc4d9a6ea6610a8479fd8bae5b782fbf3a9'
+            '62c90d01871e46f4d17ef68dcd7c8ee48975cd78dfdcee43778418ff576782f5'
+            'b56230e261d1123db9bd0fcad04c81456691bdda9904021892d1d42b9d6f3212')
 
 package() {
   install -d -m0755 "${pkgdir}/usr/bin"
