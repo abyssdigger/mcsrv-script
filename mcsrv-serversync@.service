@@ -1,0 +1,15 @@
+[Unit]
+Description=Minecraft Server Sync Service
+After=network.target
+
+[Service]
+Type=forking
+WorkingDirectory=/srv/mcsrv/%i
+ExecStart=/usr/bin/tmux -f /tmp/%u-%i-mcsrv-tmux.conf -L %u-%i-serversync-tmux.sock new-session -d -s ServerSync 'java -jar $(ls -v /srv/mcsrv/%i | grep -i "serversync" | head -n 1) server'
+ExecStop=/usr/bin/tmux -L %u-%i-serversync-tmux.sock kill-session -t ServerSync
+
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=default.target

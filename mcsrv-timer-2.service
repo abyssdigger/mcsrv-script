@@ -1,0 +1,6 @@
+[Unit]
+Description=McSrv Script Timer 2 Service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mcsrv-script timer_two

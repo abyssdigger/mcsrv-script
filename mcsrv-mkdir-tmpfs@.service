@@ -1,0 +1,11 @@
+[Unit]
+Description=McSrv TmpFs dir creator
+After=srv-mcsrv-tmpfs.mount
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/mcsrv
+ExecStart=/bin/mkdir -p /srv/mcsrv/tmpfs/%i
+
+[Install]
+WantedBy=default.target
