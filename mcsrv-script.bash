@@ -21,7 +21,7 @@
 
 #Basics
 export NAME="McSrv" #Name of the tmux session
-export VERSION="1.2-3" #Package and script version
+export VERSION="1.2-4" #Package and script version
 
 #Server configuration
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log
@@ -294,7 +294,6 @@ script_remove_server() {
 				fi
 			fi
 		fi
-	fi
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove server instance) Server instance $SERVER_INSTANCE successfully removed." | tee -a "$LOG_SCRIPT"
 	else
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove server instance) User canceled removal of server instance." | tee -a "$LOG_SCRIPT"
@@ -384,7 +383,6 @@ script_enable_services() {
 				systemctl --user enable $SERVICE_NAME-mkdir-tmpfs@$SERVER_NUMBER.service
 			fi
 		fi
-	fi
 	done
 	if [[ "$(systemctl --user show -p UnitFileState --value $SERVICE_NAME-timer-1.timer)" == "disabled" ]]; then
 		systemctl --user enable $SERVICE_NAME-timer-1.timer
@@ -697,7 +695,7 @@ script_sync() {
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Sync) Server $SERVER_NUMBER is not running." | tee -a "$LOG_SCRIPT"
 			elif [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
 				/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Sync from tmpfs to disk has been initiated." ENTER
-				rsync -aAVx --info=progress /srv/$SERVICE_NAME/tmpfs/$SERVER_NUMBER /srv/$SERVICE_NAME/$SERVER_NUMBER/
+				rsync -aAXv --info=progress /srv/$SERVICE_NAME/tmpfs/$SERVER_NUMBER /srv/$SERVICE_NAME/$SERVER_NUMBER/
 				/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Sync from tmpfs to disk has been completed." ENTER
 			fi
 		done
@@ -754,7 +752,7 @@ script_start() {
 			fi
 		done
 	else
-		SERVICE_NAME_FILE=$($CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
+		SERVICE_NAME_FILE=$(cat $CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVICE_NAME_FILE@$1.service)" == "inactive" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Server $1 start initialized." | tee -a "$LOG_SCRIPT"
 			systemctl --user start $SERVICE_NAME_FILE@$1.service
@@ -840,7 +838,7 @@ script_start_ignore_errors() {
 			fi
 		done
 	else
-		SERVICE_NAME_FILE=$($CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
+		SERVICE_NAME_FILE=$(cat $CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVICE_NAME_FILE@$1.service)" == "inactive" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Server $1 start initialized." | tee -a "$LOG_SCRIPT"
 			systemctl --user start $SERVICE_NAME_FILE@$1.service
@@ -905,7 +903,7 @@ script_stop() {
 			fi
 		done
 	else
-		SERVICE_NAME_FILE=$($CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
+		SERVICE_NAME_FILE=$(cat $CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVICE_NAME_FILE@$1.service)" == "inactive" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Stop) Server $1 is not running." | tee -a "$LOG_SCRIPT"
 			sleep 1
@@ -950,7 +948,7 @@ script_restart() {
 			fi
 		done
 	else
-		SERVICE_NAME_FILE=$($CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
+		SERVICE_NAME_FILE=$(cat $CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVICE_NAME_FILE@$1.service)" == "inactive" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Restart) Server $1 is not running. Use -start to start the server." | tee -a "$LOG_SCRIPT"
 		elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE_NAME_FILE@$1.service)" == "activating" ]]; then
@@ -1031,7 +1029,7 @@ script_delete_save() {
 	if [ -z "$1" ]; then
 		echo "You must specify a server to delete it's save."
 	else
-		SERVICE_NAME_FILE=$($CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
+		SERVICE_NAME_FILE=$(cat $CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVICE_NAME_FILE@$1.service)" != "active" ]] && [[ "$(systemctl --user show -p ActiveState --value $SERVICE_NAME_FILE@$1.service)" != "activating" ]] && [[ "$(systemctl --user show -p ActiveState --value $SERVICE_NAME_FILE@$1.service)" != "deactivating" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) WARNING! This will delete the save for server $1." | tee -a "$LOG_SCRIPT"
 			read -p "Are you sure you want to delete the server's save game? (y/n): " DELETE_SERVER_SAVE
@@ -1191,7 +1189,7 @@ script_spigot_update() {
 	if [ -z "$1" ]; then
 		echo "You must specify a server to delete it's save."
 	else
-		SERVICE_NAME_FILE=$($CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
+		SERVICE_NAME_FILE=$(cat $CONFIG_DIR/$SERVICE_NAME-server-list.txt | grep "$1" | awk -F '@' '{print $1}')
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Spigot update) Update for server $1 commencing. Waiting on user input..." | tee -a  "$LOG_SCRIPT"
 		read -p "Update spigot? (y/n): " UPDATE_SPIGOT
 		if [[ "$UPDATE_SPIGOT" =~ ^([yY][eE][sS]|[yY])$ ]]; then
