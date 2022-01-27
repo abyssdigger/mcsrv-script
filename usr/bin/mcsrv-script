@@ -21,7 +21,7 @@
 
 #Basics
 export NAME="McSrv" #Name of the tmux session
-export VERSION="1.2-6" #Package and script version
+export VERSION="1.2-7" #Package and script version
 
 #Server configuration
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log
@@ -35,6 +35,7 @@ if [ -f "$CONFIG_DIR/$SERVICE_NAME-script.conf" ] ; then
 	BCKP_DELOLD=$(cat $CONFIG_DIR/$SERVICE_NAME-script.conf | grep script_bckp_delold= | cut -d = -f2) #Delete old backups.
 	LOG_DELOLD=$(cat $CONFIG_DIR/$SERVICE_NAME-script.conf | grep script_log_delold= | cut -d = -f2) #Delete old logs.
 	LOG_GAME_DELOLD=$(cat $CONFIG_DIR/$SERVICE_NAME-script.conf | grep script_log_game_delold= | cut -d = -f2) #Delete old game logs.
+	GAME_SERVER_UPDATES=$(cat $CONFIG_DIR/$SERVICE_NAME-script.conf | grep script_update_game= | cut -d = -f2) #Delete old game logs.
 	UPDATE_IGNORE_FAILED_ACTIVATIONS=$(cat $CONFIG_DIR/$SERVICE_NAME-script.conf | grep script_update_ignore_failed_startups= | cut -d = -f2) #Ignore failed startups during update configuration
 	TIMEOUT_SAVE=$(cat $CONFIG_DIR/$SERVICE_NAME-script.conf | grep script_timeout_save= | cut -d = -f2) #Get timeout configuration for save timeout.
 else
@@ -42,6 +43,7 @@ else
 	BCKP_DELOLD=7
 	LOG_DELOLD=7
 	LOG_GAME_DELOLD=7
+	GAME_SERVER_UPDATES=0
 	UPDATE_IGNORE_FAILED_ACTIVATIONS=0
 	TIMEOUT_SAVE=120
 fi
@@ -543,16 +545,16 @@ script_saveon() {
 	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		export SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Enabling auto saving for server $SERVER_NUMBER has been initiated." | tee -a "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Enabling autosaving for server $SERVER_NUMBER has been initiated." | tee -a "$LOG_SCRIPT"
 			( sleep 5 && tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 'save-on' ENTER ) &
 			timeout $TIMEOUT_SAVE /bin/bash -c '
 			while read line; do
 				if [[ "$line" =~ "[Server thread/INFO]" ]] && [[ "$line" =~ "Automatic saving is now enabled" ]]; then
-					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Enabling auto saving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
+					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Enabling autosaving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
 					/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Automatic world saving is enabled." ENTER
 					break
 				elif [[ "$line" =~ "[Server thread/INFO]" ]] && [[ "$line" =~ " Turned on world auto-saving" ]]; then
-					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Enabling auto saving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
+					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Enabling autosaving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
 					/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Automatic world saving is enabled." ENTER
 					break
 				else
@@ -561,7 +563,7 @@ script_saveon() {
 			done < <(tail -n1 -f /tmp/$SERVICE_NAME-$SERVER_NUMBER-tmux.log)'
 			EXIT_CODE="$?"
 			if [[ "$EXIT_CODE" == "124" ]]; then
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Enabling auto saving for server $SERVER_NUMBER time limit exceeded."
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Enabling autosaving for server $SERVER_NUMBER time limit exceeded."
 			fi
 		fi
 	done
@@ -576,16 +578,16 @@ script_saveoff() {
 	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		export SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Disabling auto saving for server $SERVER_NUMBER has been initiated." | tee -a "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Disabling autosaving for server $SERVER_NUMBER has been initiated." | tee -a "$LOG_SCRIPT"
 			( sleep 5 && tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 'save-off' ENTER ) &
 			timeout $TIMEOUT_SAVE /bin/bash -c '
 			while read line; do
 				if [[ "$line" =~ "[Server thread/INFO]" ]] && [[ "$line" =~ "Automatic saving is now disabled" ]]; then
-					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save off) Disabling auto saving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
+					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save off) Disabling autosaving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
 					/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Automatic world saving is disabled." ENTER
 					break
 				elif [[ "$line" =~ "[Server thread/INFO]" ]] && [[ "$line" =~ "Turned off world auto-saving" ]]; then
-					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save off) Disabling auto saving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
+					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save off) Disabling autosaving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
 					/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Automatic world saving is disabled." ENTER
 					break
 				el
@@ -594,7 +596,7 @@ script_saveoff() {
 			done < <(tail -n1 -f /tmp/$SERVICE_NAME-$SERVER_NUMBER-tmux.log)'
 			EXIT_CODE="$?"
 			if [[ "$EXIT_CODE" == "124" ]]; then
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Disabling auto saving for server $SERVER_NUMBER time limit exceeded."
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Disabling autosaving for server $SERVER_NUMBER time limit exceeded."
 			fi
 		fi
 	done
@@ -1065,124 +1067,122 @@ script_delete_save() {
 #Check for updates. If there are updates available, shut down the server, update it and restart it.
 script_update() {
 	script_logs
-	if [[ "$GAME_SERVER_UPDATES" == "1" ]]; then
-		IFS=","
-		for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-tmpfs-vanilla@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
-			SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Initializing update check for server $SERVER_NUMBER." | tee -a "$LOG_SCRIPT"
+	IFS=","
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-tmpfs-vanilla@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+		SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Initializing update check for server $SERVER_NUMBER." | tee -a "$LOG_SCRIPT"
 
-			if [ ! -d "$UPDATE_DIR/$SERVER_NUMBER" ]; then
-				mkdir -p "$UPDATE_DIR/$SERVER_NUMBER"
+		if [ ! -d "$UPDATE_DIR/$SERVER_NUMBER" ]; then
+			mkdir -p "$UPDATE_DIR/$SERVER_NUMBER"
+		fi
+
+		if [ ! -f $UPDATE_DIR/$SERVER_NUMBER/installed.version ] ; then
+			touch $UPDATE_DIR/$SERVER_NUMBER/installed.version
+			echo "0" > $UPDATE_DIR/$SERVER_NUMBER/installed.version
+		fi
+
+		if [ ! -f $UPDATE_DIR/$SERVER_NUMBER/installed.sha1 ] ; then
+			touch $UPDATE_DIR/$SERVER_NUMBER/installed.sha1
+			echo "0" > $UPDATE_DIR/$SERVER_NUMBER/installed.sha1
+		fi
+
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Connecting to mojang servers." | tee -a "$LOG_SCRIPT"
+
+		LATEST_VERSION=$(curl -s "https://launchermeta.mojang.com/mc/game/version_manifest.json" | jq -r '.latest.release')
+		JSON_URL=$(curl -s "https://launchermeta.mojang.com/mc/game/version_manifest.json" | jq ".versions[] | select(.id==\"$LATEST_VERSION\") .url" | sed 's/"//g')
+		JAR_SHA1=$(curl -s "$JSON_URL" | jq '.downloads.server .sha1' | sed 's/"//g')
+		JAR_URL=$(curl -s "$JSON_URL" | jq '.downloads.server .url' | sed 's/"//g')
+
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Received application info data." | tee -a "$LOG_SCRIPT"
+
+		INSTALLED_VERSION=$(cat $UPDATE_DIR/$SERVER_NUMBER/installed.version)
+		INSTALLED_SHA1=$(cat $UPDATE_DIR/$SERVER_NUMBER/installed.sha1)
+
+		if [[ "$JAR_SHA1" != "$INSTALLED_SHA1" ]]; then
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) New update for server $SERVER_NUMBER detected." | tee -a "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server $SERVER_NUMBER installed version: $INSTALLED_VERSION, SHA1: $INSTALLED_SHA1" | tee -a "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server $SERVER_NUMBER available version: $LATEST_VERSION, SHA1: $JAR_SHA1" | tee -a "$LOG_SCRIPT"
+
+			if [[ "$DISCORD_UPDATE" == "1" ]]; then
+				while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
+					curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) New update for server $SERVER_NUMBER detected. Installing update.\"}" "$DISCORD_WEBHOOK"
+				done < $SCRIPT_DIR/discord_webhooks.txt
 			fi
 
-			if [ ! -f $UPDATE_DIR/$SERVER_NUMBER/installed.version ] ; then
-				touch $UPDATE_DIR/$SERVER_NUMBER/installed.version
-				echo "0" > $UPDATE_DIR/$SERVER_NUMBER/installed.version
+			if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
+				sleep 1
+				WAS_ACTIVE="1"
+				script_stop
+				sleep 1
 			fi
 
-			if [ ! -f $UPDATE_DIR/$SERVER_NUMBER/installed.sha1 ] ; then
-				touch $UPDATE_DIR/$SERVER_NUMBER/installed.sha1
-				echo "0" > $UPDATE_DIR/$SERVER_NUMBER/installed.sha1
+			if [[ "$TMPFS_ENABLE" == "1" ]]; then
+				rm -rf $TMPFS_DIR/$SERVER_NUMBER/
 			fi
 
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Connecting to mojang servers." | tee -a "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Updating server $SERVER_NUMBER..." | tee -a "$LOG_SCRIPT"
 
-			LATEST_VERSION=$(curl -s "https://launchermeta.mojang.com/mc/game/version_manifest.json" | jq -r '.latest.release')
-			JSON_URL=$(curl -s "https://launchermeta.mojang.com/mc/game/version_manifest.json" | jq ".versions[] | select(.id==\"$LATEST_VERSION\") .url" | sed 's/"//g')
-			JAR_SHA1=$(curl -s "$JSON_URL" | jq '.downloads.server .sha1' | sed 's/"//g')
-			JAR_URL=$(curl -s "$JSON_URL" | jq '.downloads.server .url' | sed 's/"//g')
+			if [ -f /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar.old ] ; then
+				rm /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar.old
+			fi
+			mv /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar.old
+			wget -O /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar "$JAR_URL"
 
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Received application info data." | tee -a "$LOG_SCRIPT"
+			if [ -f /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar ] ; then
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Update for server $SERVER_NUMBER completed." | tee -a "$LOG_SCRIPT"
+				echo "$LATEST_VERSION" > $UPDATE_DIR/installed.version
+				echo "$JAR_SHA1" > $UPDATE_DIR/installed.sha1
+			else
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Update for server $SERVER_NUMBER failed. Restoring old server.jar file." | tee -a "$LOG_SCRIPT"
+				mv /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar.old /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar
+				UPDATE_FAILED="1"
+			fi
 
-			INSTALLED_VERSION=$(cat $UPDATE_DIR/$SERVER_NUMBER/installed.version)
-			INSTALLED_SHA1=$(cat $UPDATE_DIR/$SERVER_NUMBER/installed.sha1)
+			if [ "$WAS_ACTIVE" == "1" ]; then
+				if [[ "$TMPFS_ENABLE" == "1" ]]; then
+					mkdir -p $TMPFS_DIR/$SERVER_NUMBER
+					mkdir -p /srv/$SERVICE_NAME/$SERVER_NUMBER
+				fi
 
-			if [[ "$JAR_SHA1" != "$INSTALLED_SHA1" ]]; then
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) New update for server $SERVER_NUMBER detected." | tee -a "$LOG_SCRIPT"
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server $SERVER_NUMBER installed version: $INSTALLED_VERSION, SHA1: $INSTALLED_SHA1" | tee -a "$LOG_SCRIPT"
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server $SERVER_NUMBER available version: $LATEST_VERSION, SHA1: $JAR_SHA1" | tee -a "$LOG_SCRIPT"
+				if [ ! -d "/srv/$SERVICE_NAME/$SERVER_NUMBER" ]; then
+					mkdir -p "/srv/$SERVICE_NAME/$SERVER_NUMBER"
+				fi
+				sleep 1
+				if [[ "$UPDATE_IGNORE_FAILED_ACTIVATIONS" == "1" ]]; then
+					script_start_ignore_errors $SERVER_NUMBER
+				else
+					script_start $SERVER_NUMBER
+				fi
+			fi
 
+			if [[ "$UPDATE_FAILED" == "1" ]]; then
+				if [[ "$EMAIL_UPDATE" == "1" ]]; then
+					mail -r "$EMAIL_SENDER ($NAME-$SERVICE_NAME)" -s "Notification: Update failed for server $SERVER_NUMBER" $EMAIL_RECIPIENT <<- EOF
+					The script failed to update server $SERVER_NUMBER.
+					EOF
+				fi
 				if [[ "$DISCORD_UPDATE" == "1" ]]; then
 					while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) New update for server $SERVER_NUMBER detected. Installing update.\"}" "$DISCORD_WEBHOOK"
+						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server update for server $SERVER_NUMBER failed.\"}" "$DISCORD_WEBHOOK"
 					done < $SCRIPT_DIR/discord_webhooks.txt
 				fi
-
-				if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
-					sleep 1
-					WAS_ACTIVE="1"
-					script_stop
-					sleep 1
+			else
+				if [[ "$EMAIL_UPDATE" == "1" ]]; then
+					mail -r "$EMAIL_SENDER ($NAME-$SERVICE_NAME)" -s "Notification: Update" $EMAIL_RECIPIENT <<- EOF
+					Server was updated. Please check the update notes if there are any additional steps to take.
+					EOF
 				fi
-
-				if [[ "$TMPFS_ENABLE" == "1" ]]; then
-					rm -rf $TMPFS_DIR/$SERVER_NUMBER/
+				if [[ "$DISCORD_UPDATE" == "1" ]]; then
+					while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
+						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server update complete.\"}" "$DISCORD_WEBHOOK"
+					done < $SCRIPT_DIR/discord_webhooks.txt
 				fi
-
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Updating server $SERVER_NUMBER..." | tee -a "$LOG_SCRIPT"
-
-				if [ -f /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar.old ] ; then
-					rm /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar.old
-				fi
-				mv /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar.old
-				wget -O /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar "$JAR_URL"
-
-				if [ -f /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar ] ; then
-					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Update for server $SERVER_NUMBER completed." | tee -a "$LOG_SCRIPT"
-					echo "$LATEST_VERSION" > $UPDATE_DIR/installed.version
-					echo "$JAR_SHA1" > $UPDATE_DIR/installed.sha1
-				else
-					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Update for server $SERVER_NUMBER failed. Restoring old server.jar file." | tee -a "$LOG_SCRIPT"
-					mv /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar.old /srv/$SERVICE_NAME/$SERVER_NUMBER/server.jar
-					UPDATE_FAILED="1"
-				fi
-
-				if [ "$WAS_ACTIVE" == "1" ]; then
-					if [[ "$TMPFS_ENABLE" == "1" ]]; then
-						mkdir -p $TMPFS_DIR/$SERVER_NUMBER
-						mkdir -p /srv/$SERVICE_NAME/$SERVER_NUMBER
-					fi
-
-					if [ ! -d "/srv/$SERVICE_NAME/$SERVER_NUMBER" ]; then
-						mkdir -p "/srv/$SERVICE_NAME/$SERVER_NUMBER"
-					fi
-					sleep 1
-					if [[ "$UPDATE_IGNORE_FAILED_ACTIVATIONS" == "1" ]]; then
-						script_start_ignore_errors $SERVER_NUMBER
-					else
-						script_start $SERVER_NUMBER
-					fi
-				fi
-
-				if [[ "$UPDATE_FAILED" == "1" ]]; then
-					if [[ "$EMAIL_UPDATE" == "1" ]]; then
-						mail -r "$EMAIL_SENDER ($NAME-$SERVICE_NAME)" -s "Notification: Update failed for server $SERVER_NUMBER" $EMAIL_RECIPIENT <<- EOF
-						The script failed to update server $SERVER_NUMBER.
-						EOF
-					fi
-					if [[ "$DISCORD_UPDATE" == "1" ]]; then
-						while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-							curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server update for server $SERVER_NUMBER failed.\"}" "$DISCORD_WEBHOOK"
-						done < $SCRIPT_DIR/discord_webhooks.txt
-					fi
-				else
-					if [[ "$EMAIL_UPDATE" == "1" ]]; then
-						mail -r "$EMAIL_SENDER ($NAME-$SERVICE_NAME)" -s "Notification: Update" $EMAIL_RECIPIENT <<- EOF
-						Server was updated. Please check the update notes if there are any additional steps to take.
-						EOF
-					fi
-					if [[ "$DISCORD_UPDATE" == "1" ]]; then
-						while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-							curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server update complete.\"}" "$DISCORD_WEBHOOK"
-						done < $SCRIPT_DIR/discord_webhooks.txt
-					fi
-				fi
-			elif [[ "$JAR_SHA1" == "$INSTALLED_SHA1" ]]; then
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) No new updates for server $SERVER_NUMBER detected." | tee -a "$LOG_SCRIPT"
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server $SERVER_NUMBER installed version: $INSTALLED_VERSION, SHA1: $INSTALLED_SHA1" | tee -a "$LOG_SCRIPT"
 			fi
-		done
-	fi
+		elif [[ "$JAR_SHA1" == "$INSTALLED_SHA1" ]]; then
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) No new updates for server $SERVER_NUMBER detected." | tee -a "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server $SERVER_NUMBER installed version: $INSTALLED_VERSION, SHA1: $INSTALLED_SHA1" | tee -a "$LOG_SCRIPT"
+		fi
+	done
 }
 
 #---------------------------
@@ -1425,7 +1425,9 @@ script_timer_one() {
 		script_sync
 		script_autobackup
 		script_saveon
-		script_update
+		if [[ "$GAME_SERVER_UPDATES" == "1" ]]; then
+			script_update
+		fi
 	fi
 }
 
@@ -1457,7 +1459,9 @@ script_timer_two() {
 		script_save
 		script_sync
 		script_saveon
-		script_update
+		if [[ "$GAME_SERVER_UPDATES" == "1" ]]; then
+			script_update
+		fi
 	fi
 }
 
@@ -1865,6 +1869,13 @@ script_config_script() {
 	echo ""
 	read -p "Download the vanilla server.jar (1), spigot (2) or none (0)?: " INSTAL_VANILLA_SPIGOT
 
+	read -p "Enable automatic updates for vanilla servers? (y/n): " SERVERSYNC_SETUP
+	if [[ "$SERVERSYNC_SETUP" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+		INSTAL_GAME_SERVER_UPDATES="1"
+	else
+		INSTAL_GAME_SERVER_UPDATES="0"
+	fi
+
 	read -p "Install ServerSync? (y/n): " SERVERSYNC_SETUP
 	if [[ "$SERVERSYNC_SETUP" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		SERVERSYNC_INSTALL="1"
@@ -1912,12 +1923,9 @@ script_config_script() {
 	echo 'script_bckp_delold=14' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
 	echo 'script_log_delold=7' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
 	echo 'script_log_game_delold=7' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
+	echo 'script_update_game='"$INSTAL_GAME_SERVER_UPDATES" >> $CONFIG_DIR/$SERVICE_NAME-script.conf
 	echo 'script_update_ignore_failed_startups=0' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
 	echo 'script_timeout_save=120' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
-
-	if [ ! -d "$BCKP_SRC_DIR" ]; then
-		mkdir -p "$BCKP_SRC_DIR"
-	fi
 
 	echo "Configuration complete"
 	echo "For any settings you'll want to change, edit the files located in $CONFIG_DIR/"
