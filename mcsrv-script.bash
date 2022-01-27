@@ -21,7 +21,7 @@
 
 #Basics
 export NAME="McSrv" #Name of the tmux session
-export VERSION="1.2-5" #Package and script version
+export VERSION="1.2-6" #Package and script version
 
 #Server configuration
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log
@@ -324,19 +324,19 @@ script_attach() {
 script_disable_services() {
 	script_logs
 	IFS=","
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		if [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			systemctl --user disable $SERVER_SERVICE
 		fi
 	done
 	IFS=","
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		if [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			systemctl --user disable $SERVER_SERVICE
 		fi
 	done
 	IFS=","
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-mkdir-tmpfs@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-mkdir-tmpfs@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		if [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			systemctl --user disable $SERVER_SERVICE
 		fi
@@ -540,7 +540,7 @@ script_send_notification_crash() {
 script_saveon() {
 	script_logs
 	IFS=","
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		export SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Enabling auto saving for server $SERVER_NUMBER has been initiated." | tee -a "$LOG_SCRIPT"
@@ -573,7 +573,7 @@ script_saveon() {
 script_saveoff() {
 	script_logs
 	IFS=","
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		export SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Disabling auto saving for server $SERVER_NUMBER has been initiated." | tee -a "$LOG_SCRIPT"
@@ -606,7 +606,7 @@ script_saveoff() {
 script_save() {
 	script_logs
 	IFS=","
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		export SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save game to disk for server $SERVER_NUMBER has been initiated." | tee -a "$LOG_SCRIPT"
@@ -639,7 +639,7 @@ script_save() {
 script_cleardrops() {
 	script_logs
 	IFS=","
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		export SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Clear drops) Clearing drops in 1 minute for server $SERVER_NUMBER." | tee -a "$LOG_SCRIPT"
@@ -690,7 +690,7 @@ script_sync() {
 	script_logs
 	if [[ "$TMPFS_ENABLE" == "1" ]]; then
 		IFS=","
-		for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+		for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 			SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 			if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" != "active" ]]; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Sync) Server $SERVER_NUMBER is not running." | tee -a "$LOG_SCRIPT"
@@ -884,7 +884,7 @@ script_stop() {
 	script_logs
 	if [ -z "$1" ]; then
 		IFS=","
-		for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+		for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 			SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 			if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "inactive" ]]; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Stop) Server $SERVER_NUMBER is not running." | tee -a "$LOG_SCRIPT"
@@ -931,7 +931,7 @@ script_restart() {
 	script_logs
 	if [ -z "$1" ]; then
 		IFS=","
-		for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+		for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 			SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 			if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "inactive" ]]; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Restart) Server $SERVER_NUMBER is not running. Use -start to start the server." | tee -a "$LOG_SCRIPT"
@@ -1008,7 +1008,7 @@ script_backup() {
 script_autobackup() {
 	script_logs
 	IFS=","
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" != "active" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Autobackup) Server $SERVER_NUMBER is not running." | tee -a "$LOG_SCRIPT"
@@ -1067,7 +1067,7 @@ script_update() {
 	script_logs
 	if [[ "$GAME_SERVER_UPDATES" == "1" ]]; then
 		IFS=","
-		for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-tmpfs-vanilla@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+		for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-tmpfs-vanilla@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 			SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Initializing update check for server $SERVER_NUMBER." | tee -a "$LOG_SCRIPT"
 
@@ -1401,7 +1401,7 @@ script_server_tmux_install() {
 script_timer_one() {
 	RUNNING_SERVERS="0"
 	IFS=","
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "inactive" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Status) Server $SERVER_NUMBER is not running." | tee -a "$LOG_SCRIPT"
@@ -1435,7 +1435,7 @@ script_timer_one() {
 script_timer_two() {
 	RUNNING_SERVERS="0"
 	IFS=","
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "inactive" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Status) Server $SERVER_NUMBER is not running." | tee -a "$LOG_SCRIPT"
