@@ -21,7 +21,7 @@
 
 #Basics
 export NAME="McSrv" #Name of the tmux session
-export VERSION="1.2-4" #Package and script version
+export VERSION="1.2-5" #Package and script version
 
 #Server configuration
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log
@@ -547,11 +547,11 @@ script_saveon() {
 			( sleep 5 && tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 'save-on' ENTER ) &
 			timeout $TIMEOUT_SAVE /bin/bash -c '
 			while read line; do
-				if [[ "$line" =~ "[Server thread/INFO]:" ]] && [[ "$line" =~ "Automatic saving is now enabled" ]]; then
+				if [[ "$line" =~ "[Server thread/INFO]" ]] && [[ "$line" =~ "Automatic saving is now enabled" ]]; then
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Enabling auto saving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
 					/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Automatic world saving is enabled." ENTER
 					break
-				elif [[ "$line" =~ "[Server thread/INFO]:" ]] && [[ "$line" =~ " Turned on world auto-saving" ]]; then
+				elif [[ "$line" =~ "[Server thread/INFO]" ]] && [[ "$line" =~ " Turned on world auto-saving" ]]; then
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save on) Enabling auto saving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
 					/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Automatic world saving is enabled." ENTER
 					break
@@ -580,11 +580,11 @@ script_saveoff() {
 			( sleep 5 && tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 'save-off' ENTER ) &
 			timeout $TIMEOUT_SAVE /bin/bash -c '
 			while read line; do
-				if [[ "$line" =~ "[Server thread/INFO]:" ]] && [[ "$line" =~ "Automatic saving is now disabled" ]]; then
+				if [[ "$line" =~ "[Server thread/INFO]" ]] && [[ "$line" =~ "Automatic saving is now disabled" ]]; then
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save off) Disabling auto saving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
 					/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Automatic world saving is disabled." ENTER
 					break
-				elif [[ "$line" =~ "[Server thread/INFO]:" ]] && [[ "$line" =~ "Turned off world auto-saving" ]]; then
+				elif [[ "$line" =~ "[Server thread/INFO]" ]] && [[ "$line" =~ "Turned off world auto-saving" ]]; then
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save off) Disabling auto saving for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
 					/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Automatic world saving is disabled." ENTER
 					break
@@ -613,11 +613,11 @@ script_save() {
 			( sleep 5 && tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 'save-all' ENTER ) &
 			timeout $TIMEOUT_SAVE /bin/bash -c '
 		while read line; do
-			if [[ "$line" =~ "[Server thread/INFO]:" ]] && [[ "$line" =~ "Saved the game" ]]; then
+			if [[ "$line" =~ "[Server thread/INFO]" ]] && [[ "$line" =~ "Saved the game" ]]; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save game to disk for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
 				/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say World save complete." ENTER
 				break
-			elif [[ "$line" =~ "[Server thread/INFO]:" ]] && [[ "$line" =~ "Saved the world" ]]; then
+			elif [[ "$line" =~ "[Server thread/INFO]" ]] && [[ "$line" =~ "Saved the world" ]]; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save game to disk for server $SERVER_NUMBER complete." | tee -a  "$LOG_SCRIPT"
 				/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say World save complete." ENTER
 				break
@@ -689,13 +689,14 @@ script_cleardrops() {
 script_sync() {
 	script_logs
 	if [[ "$TMPFS_ENABLE" == "1" ]]; then
+		IFS=","
 		for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 			SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 			if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" != "active" ]]; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Sync) Server $SERVER_NUMBER is not running." | tee -a "$LOG_SCRIPT"
 			elif [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
 				/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Sync from tmpfs to disk has been initiated." ENTER
-				rsync -aAXv --info=progress /srv/$SERVICE_NAME/tmpfs/$SERVER_NUMBER /srv/$SERVICE_NAME/$SERVER_NUMBER/
+				rsync -aAXv --info=progress /srv/$SERVICE_NAME/tmpfs/$SERVER_NUMBER/ /srv/$SERVICE_NAME/$SERVER_NUMBER
 				/usr/bin/tmux -L $SERVICE_NAME-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 "say Sync from tmpfs to disk has been completed." ENTER
 			fi
 		done
@@ -1006,6 +1007,7 @@ script_backup() {
 #Automaticly backs up the server and deletes old backups
 script_autobackup() {
 	script_logs
+	IFS=","
 	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" != "active" ]]; then
@@ -1064,6 +1066,7 @@ script_delete_save() {
 script_update() {
 	script_logs
 	if [[ "$GAME_SERVER_UPDATES" == "1" ]]; then
+		IFS=","
 		for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-tmpfs-vanilla@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 			SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Initializing update check for server $SERVER_NUMBER." | tee -a "$LOG_SCRIPT"
@@ -1213,7 +1216,7 @@ script_spigot_update() {
 			( sleep 5 && /usr/bin/tmux -f $SCRIPT_DIR/$SERVICE_NAME-$1-tmux.conf -L $SERVICE_NAME-$1-tmux.sock new-session -d -s $NAME 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar $(ls -v '/srv/$SERVICE_NAME/$1' | grep -i "spigot" | grep -i ".jar" | head -n 1) --forceUpgrade' ) &
 			timeout $TIMEOUT /bin/bash -c '
 			while read line; do
-				if [[ "$line" =~ "[Server thread/INFO]: Done " ]]; then
+				if [[ "$line" =~ "[Server thread/INFO] Done " ]]; then
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Spigot update) World preperation complete." | tee -a  "$LOG_SCRIPT"
 					/usr/bin/tmux -L $SERVICE_NAME-$1-tmux.sock send-keys -t $NAME.0 "stop" ENTER
 					sleep 10
@@ -1239,7 +1242,7 @@ script_spigot_update() {
 			( sleep 5 && /usr/bin/tmux -f $SCRIPT_DIR/$SERVICE_NAME-tmux.conf -L $SERVICE_NAME-$1-tmux.sock new-session -d -s $NAME 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar $(ls -v '$SRV_DIR' | grep -i "spigot" | grep -i ".jar" | head -n 1) --forceUpgrade' ) &
 			timeout $TIMEOUT /bin/bash -c '
 			while read line; do
-				if [[ "$line" =~ "[Server thread/INFO]: Done " ]]; then
+				if [[ "$line" =~ "[Server thread/INFO] Done " ]]; then
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Spigot update) World upgrade complete." | tee -a  "$LOG_SCRIPT"
 					/usr/bin/tmux -L $SERVICE_NAME-$1-tmux.sock send-keys -t $NAME.0 "stop" ENTER
 					sleep 10
@@ -1397,6 +1400,7 @@ script_server_tmux_install() {
 #First timer function for systemd timers to execute parts of the script in order without interfering with each other
 script_timer_one() {
 	RUNNING_SERVERS="0"
+	IFS=","
 	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "inactive" ]]; then
@@ -1430,6 +1434,7 @@ script_timer_one() {
 #Second timer function for systemd timers to execute parts of the script in order without interfering with each other
 script_timer_two() {
 	RUNNING_SERVERS="0"
+	IFS=","
 	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE_NAME-vanilla@*.service $SERVICE_NAME-forge@*.service $SERVICE_NAME-spigot@*.service $SERVICE_NAME-tmpfs-vanilla@*.service $SERVICE_NAME-tmpfs-forge@*.service $SERVICE_NAME-tmpfs-spigot@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "inactive" ]]; then
