@@ -28,7 +28,7 @@ Type=forking
 WorkingDirectory=/srv/mcsrv/%i
 ExecStartPre=/usr/bin/mcsrv-script server_tmux_install %i
 ExecStartPre=/usr/bin/mcsrv-script send_notification_start_initialized %i
-ExecStart=/usr/bin/tmux -f /tmp/%u-%i-mcsrv-tmux.conf -L %u-%i-tmux.sock new-session -d -s McSrv 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar server.jar nogui'
+ExecStart=/usr/bin/tmux -f /tmp/%u-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s McSrv 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar server.jar nogui'
 ExecStartPost=/usr/bin/mcsrv-script send_notification_start_complete %i
 ExecStop=/usr/bin/mcsrv-script send_notification_stop_initialized %i
 ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'say SERVER SHUTTING DOWN IN 10!' ENTER
@@ -39,8 +39,8 @@ ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'say SERVER SHUTT
 ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'save-all' ENTER
 ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'stop' ENTER
 ExecStop=/usr/bin/sleep 10
-ExecStopPost=/usr/bin/rm /tmp/%u-%i-mcsrv-tmux.log
-ExecStopPost=/usr/bin/rm /tmp/%u-%i-mcsrv-tmux.conf
+ExecStopPost=/usr/bin/rm /tmp/%u-%i-tmux.log
+ExecStopPost=/usr/bin/rm /tmp/%u-%i-tmux.conf
 ExecStopPost=/usr/bin/mcsrv-script send_notification_stop_complete %i
 TimeoutStartSec=infinity
 TimeoutStopSec=120
