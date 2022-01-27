@@ -2,7 +2,7 @@
 
 pkgname=mcsrv-script
 pkgver=1.2
-pkgrel=3
+pkgrel=4
 pkgdesc='Minecraft server script for running the server on linux.'
 arch=('x86_64')
 license=('GPL3')
@@ -40,20 +40,20 @@ source=('bash_profile'
         'mcsrv-tmpfs-vanilla@.service'
         'mcsrv-vanilla@.service')
 sha256sums=('f1e2f643b81b27d16fe79e0563e39c597ce42621ae7c2433fd5b70f1eeab5d63'
-            'b3f4ba2d85adc3f77e85ed704f78ba3fcf603485b42bd24fdfe0eb7cf4c7233f'
+            '50c70f7cf8f487bee40628d8254f87c3c5957fd627cbbc3ad241538736348e84'
             '85792a07aa66663a8428006e454c7949c932a0f0796ccf60111c1a368a845fb8'
-            'c5f7eaac20a050fbb62ba13fb4957da4d2e6255f25cd0f5fd3b04e30ccf77ed6'
+            '485d5a267b5ce689b205a375865c5e215eff33e21950f0b72901d5db8fdca338'
             '0e533328a50d12981fc0624288234821175b5970363a6e2ba1de50bc0b2ccb8e'
-            '0053895ef4c8d43715a3f8641b2381dca36717fa2f30f0db0f0606616088c460'
-            'b9ea717b05244d78c136e05c7d340903fa81986a96dd47d8ce2294a0670e63e2'
+            '5dc94b0c608f3662641e1cad2880dbbc0ec379ebe64ddd0b0bdd913053d79c19'
+            '6c353644cd3ab56a258fa2cb490897c7338c8248347c54c41e09ffa7ca3dee5b'
             '21b627f1fb96a41bbd084bac92a99d0f94085a07d9acb8c01f15007535feef10'
             '5116c82874543bd11f4976495fb30075fd076115ad877fcecb8e1a6a97f5471e'
             'e96dd020900db19d3932d5f83a69cad0222ccfdc99f72e6be57ebfb32fbedf6f'
             '59bb73d65729d1b8919d3ed0b3cbc7603b42499a1cdd7aaa5ad9f96d733f531b'
-            'ce00da21a2f9dba358a3bdce27066b9c8f42186cd2eb1e8817ac6060f4597c0f'
-            '27748d2a37d53b59e8cd4cc458c73dc4d9a6ea6610a8479fd8bae5b782fbf3a9'
-            '62c90d01871e46f4d17ef68dcd7c8ee48975cd78dfdcee43778418ff576782f5'
-            'b56230e261d1123db9bd0fcad04c81456691bdda9904021892d1d42b9d6f3212')
+            '149ba38e335c70e47a5a1f5c21e8be599b38c5211158a102f1a1578b004e44e8'
+            '048d4dbbf2a211d51ebbdf37eb769ff6561f5875a506824236aa1f01a3397cf7'
+            '35c11df37af156af230dab872cb89085aa7b9d11bfd897ac7aa7e3e078d6f60b'
+            '38a7e44678aebf74cb4a483c816b4ba663ee364b009fb0660cee8e488d7f6b1a')
 
 package() {
   install -d -m0755 "${pkgdir}/usr/bin"
