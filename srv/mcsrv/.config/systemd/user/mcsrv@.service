@@ -15,10 +15,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 [Unit]
-Description=Minecraft Forge TmpFs Server Service
-Requires=mcsrv-mkdir-tmpfs@%i.service
-After=network.target srv-mcsrv-tmpfs.mount mcsrv-mkdir-tmpfs@%i.service
-Conflicts=mcsrv-forge@.service
+Description=Minecraft Server Service
+After=network.target
+Conflicts=mcsrv-tmpfs@%i.service
 StartLimitBurst=3
 StartLimitIntervalSec=300
 StartLimitAction=none
@@ -26,13 +25,13 @@ OnFailure=mcsrv-send-notification@.service
 
 [Service]
 Type=forking
-WorkingDirectory=/srv/mcsrv/tmpfs/%i
-ExecStartPre=/usr/bin/mcsrv-script server_tmux_install %i
-ExecStartPre=/usr/bin/mcsrv-script send_notification_start_initialized %i
-ExecStartPre=/usr/bin/rsync -aAXv --info=progress2 /srv/mcsrv/%i/ /srv/mcsrv/tmpfs/%i
-ExecStart=/usr/bin/tmux -f /tmp/%u-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s McSrv 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar $(ls -v /srv/mcsrv/tmpfs/%i | grep -i "forge" | grep -i ".jar" | head -n 1)'
-ExecStartPost=/usr/bin/mcsrv-script send_notification_start_complete %i
-ExecStop=/usr/bin/mcsrv-script send_notification_stop_initialized %i
+KillMode=none
+WorkingDirectory=/srv/mcsrv/%i
+ExecStartPre=/usr/bin/isrsrv-script pre-start %i
+ExecStartPre=/usr/bin/isrsrv-script server_tmux_install %i
+ExecStart=/usr/bin/tmux -f /tmp/%u-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s McSrv 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar server.jar nogui'
+ExecStartPost=/usr/bin/isrsrv-script post-start %i
+ExecStop=/usr/bin/isrsrv-script pre-stop %i
 ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'say SERVER SHUTTING DOWN IN 10!' ENTER
 ExecStop=/usr/bin/sleep 5
 ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'SERVER SHUTTING DOWN IN 5!' ENTER
@@ -40,11 +39,7 @@ ExecStop=/usr/bin/sleep 5
 ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'say SERVER SHUTTING DOWN NOW!' ENTER
 ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'save-all' ENTER
 ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t McSrv.0 'stop' ENTER
-ExecStop=/usr/bin/sleep 10
-ExecStop=/usr/bin/rsync -aAXv --info=progress2 /srv/mcsrv/tmpfs/%i/ /srv/mcsrv/%i
-ExecStopPost=/usr/bin/rm /tmp/%u-%i-tmux.log
-ExecStopPost=/usr/bin/rm /tmp/%u-%i-tmux.conf
-ExecStopPost=/usr/bin/mcsrv-script send_notification_stop_complete %i
+ExecStopPost=/usr/bin/isrsrv-script post-stop %i
 TimeoutStartSec=infinity
 TimeoutStopSec=120
 RestartSec=10
