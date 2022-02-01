@@ -19,15 +19,20 @@
 #Minecraft server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 
-#Basics
+#Static script variables
 export NAME="McSrv" #Name of the tmux session
-export VERSION="1.3-1" #Package and script version
-
-#Server configuration
+export VERSION="1.3-2" #Package and script version
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log
+export LOG_DIR="/srv/$SERVICE_NAME/logs"
+export LOG_STRUCTURE="$LOG_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #Location of the script's log files
+export LOG_SCRIPT="$LOG_STRUCTURE/$SERVICE_NAME-script.log" #Script log
+export CRASH_DIR="$LOG_DIR/crashes/$(date +"%Y-%m-%d_%H-%M")" #Location of
 SRV_DIR="/srv/$SERVICE_NAME/server" #Location of the server located on your hdd/ssd
+TMPFS_DIR="/srv/$SERVICE_NAME/tmpfs" #Locaton of your tmpfs partition.
 CONFIG_DIR="/srv/$SERVICE_NAME/config" #Location of this script
 UPDATE_DIR="/srv/$SERVICE_NAME/updates" #Location of update information for the script's automatic update feature
+BCKP_DIR="/srv/$SERVICE_NAME/backups" #Location of stored backups
+BCKP_STRUCTURE="$BCKP_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #How backups are sorted, by default it's sorted in folders by month and day
 
 #Script configuration
 if [ -f "$CONFIG_DIR/$SERVICE_NAME-script.conf" ] ; then
@@ -76,23 +81,6 @@ else
 	DISCORD_CRASH="0"
 fi
 
-#Ramdisk configuration
-TMPFS_DIR="/srv/$SERVICE_NAME/tmpfs" #Locaton of your tmpfs partition.
-
-#Backup configuration
-BCKP_DIR="/srv/$SERVICE_NAME/backups" #Location of stored backups
-BCKP_DEST="$BCKP_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #How backups are sorted, by default it's sorted in folders by month and day
-
-#Log configuration
-export LOG_DIR="/srv/$SERVICE_NAME/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")"
-export LOG_DIR_ALL="/srv/$SERVICE_NAME/logs"
-export LOG_SCRIPT="$LOG_DIR/$SERVICE_NAME-script.log" #Script log
-# export CRASH_DIR="/srv/$SERVICE_NAME/logs/crashes/$(date +"%Y-%m-%d_%H-%M")"
-
-TIMEOUT=120
-
-#-------Do not edit anything beyond this line-------
-
 #Console collors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -101,12 +89,14 @@ LIGHTRED='\033[1;31m'
 NC='\033[0m'
 
 #---------------------------
+#End of configuration
+#---------------------------
 
 #Generate log folder structure
 script_logs() {
 	#If there is not a folder for today, create one
-	if [ ! -d "$LOG_DIR" ]; then
-		mkdir -p $LOG_DIR
+	if [ ! -d "$LOG_STRUCTURE" ]; then
+		mkdir -p $LOG_STRUCTURE
 	fi
 }
 
@@ -117,10 +107,15 @@ script_remove_old_files() {
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Beginning removal of old files." | tee -a "$LOG_SCRIPT"
 	#Delete old logs
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Removing old script logs: $LOG_DELOLD days old." | tee -a "$LOG_SCRIPT"
-	find $LOG_DIR_ALL/* -mtime +$LOG_DELOLD -delete
+	find $LOG_DIR/* -mtime +$LOG_DELOLD -delete
 	#Delete empty folders
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Removing empty script log folders." | tee -a "$LOG_SCRIPT"
-	find $LOG_DIR_ALL/ -type d -empty -delete
+	find $LOG_DIR/ -type d -empty -delete
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Deleting old backups: $BCKP_DELOLD days old." | tee -a "$LOG_SCRIPT"
+	# Delete old backups
+	find $BCKP_DIR/* -type f -mtime +$BCKP_DELOLD -delete
+	# Delete empty folders
+	find $BCKP_DIR/ -type d -empty -delete
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Removal of old files complete." | tee -a "$LOG_SCRIPT"
 }
 
@@ -698,7 +693,7 @@ script_cleardrops() {
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Clearing drops." ENTER &&
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "/kill @e[type=item]" ENTER &&
 			sleep 1 ) &
-			timeout $TIMEOUT /bin/bash -c '
+			timeout $TIMEOUT_SAVE /bin/bash -c '
 			while read line; do
 				if [[ "$line" =~ "/kill @e[type=item]" ]]; then
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Clear Drops) Clearing drops for server $SERVER_INSTANCE complete." | tee -a  "$LOG_SCRIPT"
@@ -729,7 +724,7 @@ script_sync() {
 		elif [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]] && [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Sync) Sync from tmpfs to disk for server $SERVER_INSTANCE has been initiated." | tee -a "$LOG_SCRIPT"
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Sync from tmpfs to disk has been initiated." ENTER
-			rsync -aAX --info=progress2 /srv/$SERVICE_NAME/tmpfs/$SERVER_INSTANCE/ /srv/$SERVICE_NAME/$SERVER_INSTANCE
+			rsync -aAX --info=progress2 $TMPFS_DIR/$SERVER_INSTANCE/ /srv/$SERVICE_NAME/$SERVER_INSTANCE
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Sync from tmpfs to disk has been completed." ENTER
 			sleep 1
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Sync) Sync from tmpfs to disk for server $SERVER_INSTANCE has been completed." | tee -a "$LOG_SCRIPT"
@@ -951,37 +946,23 @@ script_restart() {
 
 #---------------------------
 
-#Deletes old backups
-script_deloldbackup() {
-	script_logs
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old backup) Deleting old backups: $BCKP_DELOLD days old." | tee -a  "$LOG_SCRIPT"
-	# Delete old backups
-	find $BCKP_DIR/* -mtime +$BCKP_DELOLD -exec rm {} \;
-	# Delete empty folders
-	#find $BCKP_DIR/ -type d 2> /dev/null -empty -exec rm -rf {} \;
-	find $BCKP_DIR/ -type d -empty -delete
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old backup) Deleting old backups complete." | tee -a  "$LOG_SCRIPT"
-}
-
-#---------------------------
-
-#Backs up the server
+#Creates a backup of the server
 script_backup() {
 	script_logs
 	#If there is not a folder for today, create one
-	if [ ! -d "$BCKP_DEST" ]; then
-		mkdir -p $BCKP_DEST
+	if [ ! -d "$BCKP_STRUCTURE" ]; then
+		mkdir -p $BCKP_STRUCTURE
 	fi
 	#Backup source to destination
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Backup) Backup has been initiated." | tee -a  "$LOG_SCRIPT"
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-tmpfs@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
 		SERVER_INSTANCE=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" != "active" ]] && [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Autobackup) Server $SERVER_INSTANCE is not running." | tee -a "$LOG_SCRIPT"
 		elif [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]] && [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Server backup in progress." ENTER
-			cd "/srv/$SERVICE_NAME/tmpfs/$SERVER_INSTANCE"
-			tar -cpvzf $BCKP_DEST/$(date +"%Y%m%d%H%M")_$SERVER_INSTANCE.tar.gz /srv/$SERVICE_NAME/tmpfs/$SERVER_INSTANCE/ #| sed -e "s/^/$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Compressing: /" | tee -a  "$LOG_SCRIPT"
+			cd "$TMPFS_DIR/$SERVER_INSTANCE"
+			tar -cpvzf $BCKP_STRUCTURE/$(date +"%Y%m%d%H%M")_$SERVER_INSTANCE.tar.gz $TMPFS_DIR/$SERVER_INSTANCE/ #| sed -e "s/^/$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Compressing: /" | tee -a  "$LOG_SCRIPT"
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Server backup complete." ENTER
 		fi
 	done
@@ -992,7 +973,7 @@ script_backup() {
 		elif [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]] && [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Server backup in progress." ENTER
 			cd "/srv/$SERVICE_NAME/$SERVER_INSTANCE"
-			tar -cpvzf $BCKP_DEST/$(date +"%Y%m%d%H%M")_$SERVER_INSTANCE.tar.gz /srv/$SERVICE_NAME/$SERVER_INSTANCE/ #| sed -e "s/^/$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Compressing: /" | tee -a  "$LOG_SCRIPT"
+			tar -cpvzf $BCKP_STRUCTURE/$(date +"%Y%m%d%H%M")_$SERVER_INSTANCE.tar.gz /srv/$SERVICE_NAME/$SERVER_INSTANCE/ #| sed -e "s/^/$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Compressing: /" | tee -a  "$LOG_SCRIPT"
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Server backup complete." ENTER
 		fi
 	done
@@ -1048,10 +1029,8 @@ script_update() {
 			fi
 
 			if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]] && [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
-				sleep 1
 				WAS_ACTIVE="1"
 				script_stop $SERVER_INSTANCE
-				sleep 1
 			fi
 
 			if [[ "$(echo $SERVER_SERVICE | awk -F '@' '{print $1}')" == "$SERVICE_NAME-tmpfs" ]]; then
@@ -1257,6 +1236,7 @@ script_timer_one() {
 		script_save
 		script_sync
 		script_backup
+		script_deloldbackup
 		script_saveon
 		if [[ "$GAME_SERVER_UPDATES" == "1" ]]; then
 			script_update
@@ -1663,7 +1643,7 @@ script_config_tmpfs() {
 			cat >> /etc/fstab <<- EOF
 
 			# /mnt/tmpfs
-			tmpfs				   /srv/$SERVICE_NAME/tmpfs		tmpfs		   rw,size=$INSTALL_TMPFS_SIZE,uid=$(id -u $SERVICE_NAME),mode=0777	0 0
+			tmpfs				   $TMPFS_DIR		tmpfs		   rw,size=$INSTALL_TMPFS_SIZE,uid=$(id -u $SERVICE_NAME),mode=0777	0 0
 			EOF
 		else
 			echo "Add the following line to /etc/fstab:"
@@ -1768,27 +1748,26 @@ case "$1" in
 		echo -e "${GREEN}config_tmpfs   ${RED}- ${GREEN}Configures tmpfs/ramdisk. Due to it adding a line to /etc/fstab this has to be executed as root.${NC}"
 		echo ""
 		echo "Server services managment:"
-		echo -e "${GREEN}add_server                      ${RED}- ${GREEN}Adds a server instance.${NC}"
-		echo -e "${GREEN}remove_server                   ${RED}- ${GREEN}Removes a server instance.${NC}"
-		echo -e "${GREEN}enable_services <server number> ${RED}- ${GREEN}Enables all services dependant on the configuration file of the script.${NC}"
-		echo -e "${GREEN}disable_services                ${RED}- ${GREEN}Disables all services. The server and the script will not start up on boot anymore.${NC}"
-		echo -e "${GREEN}reload_services                 ${RED}- ${GREEN}Reloads all services, dependant on the configuration file.${NC}"
+		echo -e "${GREEN}add_server                   ${RED}- ${GREEN}Adds a server instance.${NC}"
+		echo -e "${GREEN}remove_server                ${RED}- ${GREEN}Removes a server instance.${NC}"
+		echo -e "${GREEN}enable_services              ${RED}- ${GREEN}Enables all services dependant on the configuration file of the script.${NC}"
+		echo -e "${GREEN}disable_services             ${RED}- ${GREEN}Disables all services. The server and the script will not start up on boot anymore.${NC}"
+		echo -e "${GREEN}reload_services              ${RED}- ${GREEN}Reloads all services, dependant on the configuration file.${NC}"
 		echo ""
 		echo "Server and console managment:"
-		echo -e "${GREEN}start <server number>           ${RED}- ${GREEN}Start the server. If the server number is not specified the function will start all servers.${NC}"
-		echo -e "${GREEN}start_no_err <server number>    ${RED}- ${GREEN}Start the server but don't require confimation if in failed state.${NC}"
-		echo -e "${GREEN}stop <server number>            ${RED}- ${GREEN}Stop the server. If the server number is not specified the function will stop all servers.${NC}"
-		echo -e "${GREEN}restart <server number>         ${RED}- ${GREEN}Restart the server. If the server number is not specified the function will restart all servers.${NC}"
-		echo -e "${GREEN}save                            ${RED}- ${GREEN}Issue the save command to the server.${NC}"
-		echo -e "${GREEN}sync                            ${RED}- ${GREEN}Sync from tmpfs to hdd/ssd.${NC}"
-		echo -e "${GREEN}attach <server number>          ${RED}- ${GREEN}Attaches to the tmux session of the specified server.${NC}"
+		echo -e "${GREEN}start <server number>        ${RED}- ${GREEN}Start the server. If the server number is not specified the function will start all servers.${NC}"
+		echo -e "${GREEN}start_no_err <server number> ${RED}- ${GREEN}Start the server but don't require confimation if in failed state.${NC}"
+		echo -e "${GREEN}stop <server number>         ${RED}- ${GREEN}Stop the server. If the server number is not specified the function will stop all servers.${NC}"
+		echo -e "${GREEN}restart <server number>      ${RED}- ${GREEN}Restart the server. If the server number is not specified the function will restart all servers.${NC}"
+		echo -e "${GREEN}save                         ${RED}- ${GREEN}Issue the save command to all active servers.${NC}"
+		echo -e "${GREEN}sync                         ${RED}- ${GREEN}Sync from tmpfs to hdd/ssd for all active server running on tmpfs.${NC}"
+		echo -e "${GREEN}attach <server number>       ${RED}- ${GREEN}Attaches to the tmux session of the specified server.${NC}"
 		echo ""
 		echo "Backup managment:"
-		echo -e "${GREEN}backup        ${RED}- ${GREEN}Backup files if server running.${NC}"
-		echo -e "${GREEN}delete_backup ${RED}- ${GREEN}Delete old backups.${NC}"
+		echo -e "${GREEN}backup                       ${RED}- ${GREEN}Backup files if server running.${NC}"
 		echo ""
 		echo "Game specific functions:"
-		echo -e "${GREEN}update                        ${RED}- ${GREEN}Update the server, if the server is running it will save it, shut it down, update it and restart it.${NC}"
+		echo -e "${GREEN}update                       ${RED}- ${GREEN}Update the server, if the server is running it will save it, shut it down, update it and restart it.${NC}"
 		echo ""
 		;;
 #---------------------------
@@ -1858,9 +1837,6 @@ case "$1" in
 	backup)
 		script_backup
 		;;
-	delete_backup)
-		script_deloldbackup
-		;;
 #---------------------------
 #Game specific functions
 	update)
@@ -1904,7 +1880,7 @@ case "$1" in
 	echo -e "${GREEN}Configuration and installation${RED}: ${GREEN}config_script, config_discord, config_email, config_tmpfs${NC}"
 	echo -e "${GREEN}Server services managment${RED}: ${GREEN}add_server, remove_server, enable_services, disable_services, reload_services${NC}"
 	echo -e "${GREEN}Server and console managment${RED}: ${GREEN}start, start_no_err, stop,restart, save, sync, attach${NC}"
-	echo -e "${GREEN}Backup managment${RED}: ${GREEN}backup, delete_backup${NC}"
+	echo -e "${GREEN}Backup managment${RED}: ${GREEN}backup${NC}"
 	echo -e "${GREEN}Game specific functions${RED}: ${GREEN}update, delete_save${NC}"
 	exit 1
 	;;
