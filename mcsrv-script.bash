@@ -21,7 +21,7 @@
 
 #Static script variables
 export NAME="McSrv" #Name of the tmux session
-export VERSION="1.3-2" #Package and script version
+export VERSION="1.3-3" #Package and script version
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log
 export LOG_DIR="/srv/$SERVICE_NAME/logs"
 export LOG_STRUCTURE="$LOG_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #Location of the script's log files
@@ -32,7 +32,7 @@ TMPFS_DIR="/srv/$SERVICE_NAME/tmpfs" #Locaton of your tmpfs partition.
 CONFIG_DIR="/srv/$SERVICE_NAME/config" #Location of this script
 UPDATE_DIR="/srv/$SERVICE_NAME/updates" #Location of update information for the script's automatic update feature
 BCKP_DIR="/srv/$SERVICE_NAME/backups" #Location of stored backups
-BCKP_STRUCTURE="$BCKP_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #How backups are sorted, by default it's sorted in folders by month and day
+BCKP_STRUCTURE="$(date +"%Y")/$(date +"%m")/$(date +"%d")" #How backups are sorted, by default it's sorted in folders by month and day
 
 #Script configuration
 if [ -f "$CONFIG_DIR/$SERVICE_NAME-script.conf" ] ; then
@@ -104,6 +104,7 @@ script_logs() {
 
 #Deletes old files
 script_remove_old_files() {
+	script_logs
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Beginning removal of old files." | tee -a "$LOG_SCRIPT"
 	#Delete old logs
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Removing old script logs: $LOG_DELOLD days old." | tee -a "$LOG_SCRIPT"
@@ -111,11 +112,18 @@ script_remove_old_files() {
 	#Delete empty folders
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Removing empty script log folders." | tee -a "$LOG_SCRIPT"
 	find $LOG_DIR/ -type d -empty -delete
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Deleting old backups: $BCKP_DELOLD days old." | tee -a "$LOG_SCRIPT"
-	# Delete old backups
-	find $BCKP_DIR/* -type f -mtime +$BCKP_DELOLD -delete
-	# Delete empty folders
-	find $BCKP_DIR/ -type d -empty -delete
+	IFS=","
+	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME@*.service $SERVICE_NAME-tmpfs@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
+		SERVER_INSTANCE=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
+		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]] && [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Deleting old backups for $SERVER_INSTANCE: $BCKP_DELOLD days old." | tee -a "$LOG_SCRIPT"
+			# Delete old backups
+			find $BCKP_DIR/$SERVER_INSTANCE/* -type f -mtime +$BCKP_DELOLD -delete
+			# Delete empty folders
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Deleting empty backup folders for $SERVER_INSTANCE." | tee -a "$LOG_SCRIPT"
+			find $BCKP_DIR/$SERVER_INSTANCE/ -type d -empty -delete
+		fi
+	done
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Removal of old files complete." | tee -a "$LOG_SCRIPT"
 }
 
@@ -294,6 +302,17 @@ script_remove_server() {
 				systemctl --user disable $SERVICE_NAME-mkdir-tmpfs@$SERVER_INSTANCE_REMOVE.service
 			fi
 			systemctl --user disable $SERVER_INSTANCE
+
+			read -p "Delete the server folder for $SERVER_INSTANCE_REMOVE? (y/n): " DELETE_SERVER_INSTANCE
+			if [[ "$DELETE_SERVER_INSTANCE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+				rm -rf /srv/$SERVICE_NAME/$SERVER_INSTANCE_REMOVE
+			fi
+
+			read -p "Delete the backup folder for $SERVER_INSTANCE_REMOVE? (y/n): " DELETE_SERVER_BACKUP
+			if [[ "$DELETE_SERVER_BACKUP" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+				rm -rf $BCKP_DIR/$SERVER_INSTANCE_REMOVE
+			fi
+
 			read -p "Server instance $SERVER_INSTANCE removed successfully. Do you want to stop it? (y/n): " STOP_SERVER_INSTANCE
 			if [[ "$STOP_SERVER_INSTANCE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				systemctl --user stop $SERVER_INSTANCE
@@ -949,10 +968,14 @@ script_restart() {
 #Creates a backup of the server
 script_backup() {
 	script_logs
+
 	#If there is not a folder for today, create one
-	if [ ! -d "$BCKP_STRUCTURE" ]; then
-		mkdir -p $BCKP_STRUCTURE
-	fi
+	script_backup_create_folder() {
+		if [ ! -d "$BCKP_DIR/$1/$BCKP_STRUCTURE" ]; then
+			mkdir -p $BCKP_DIR/$1/$BCKP_STRUCTURE
+		fi
+	}
+
 	#Backup source to destination
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Backup) Backup has been initiated." | tee -a  "$LOG_SCRIPT"
 	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager --plain $SERVICE_NAME-tmpfs@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
@@ -961,8 +984,9 @@ script_backup() {
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Autobackup) Server $SERVER_INSTANCE is not running." | tee -a "$LOG_SCRIPT"
 		elif [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]] && [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Server backup in progress." ENTER
+			script_backup_create_folder $SERVER_INSTANCE
 			cd "$TMPFS_DIR/$SERVER_INSTANCE"
-			tar -cpvzf $BCKP_STRUCTURE/$(date +"%Y%m%d%H%M")_$SERVER_INSTANCE.tar.gz $TMPFS_DIR/$SERVER_INSTANCE/ #| sed -e "s/^/$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Compressing: /" | tee -a  "$LOG_SCRIPT"
+			tar -cpvzf $BCKP_DIR/$SERVER_INSTANCE/$BCKP_STRUCTURE/$(date +"%Y%m%d%H%M")_$SERVER_INSTANCE.tar.gz $TMPFS_DIR/$SERVER_INSTANCE/
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Server backup complete." ENTER
 		fi
 	done
@@ -972,12 +996,12 @@ script_backup() {
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Autobackup) Server $SERVER_INSTANCE is not running." | tee -a "$LOG_SCRIPT"
 		elif [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]] && [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Server backup in progress." ENTER
+			script_backup_create_folder $SERVER_INSTANCE
 			cd "/srv/$SERVICE_NAME/$SERVER_INSTANCE"
-			tar -cpvzf $BCKP_STRUCTURE/$(date +"%Y%m%d%H%M")_$SERVER_INSTANCE.tar.gz /srv/$SERVICE_NAME/$SERVER_INSTANCE/ #| sed -e "s/^/$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Compressing: /" | tee -a  "$LOG_SCRIPT"
+			tar -cpvzf $BCKP_DIR/$SERVER_INSTANCE/$BCKP_STRUCTURE/$(date +"%Y%m%d%H%M")_$SERVER_INSTANCE.tar.gz /srv/$SERVICE_NAME/$SERVER_INSTANCE/
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Server backup complete." ENTER
 		fi
 	done
-	script_deloldbackup
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Backup) Backup complete." | tee -a  "$LOG_SCRIPT"
 }
 
@@ -1236,7 +1260,6 @@ script_timer_one() {
 		script_save
 		script_sync
 		script_backup
-		script_deloldbackup
 		script_saveon
 		if [[ "$GAME_SERVER_UPDATES" == "1" ]]; then
 			script_update
@@ -1696,7 +1719,7 @@ script_config_script() {
 	fi
 
 	touch $CONFIG_DIR/$SERVICE_NAME-script.conf
-	echo 'script_bckp_delold=14' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
+	echo 'script_bckp_delold=7' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
 	echo 'script_log_delold=7' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
 	echo 'script_log_game_delold=7' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
 	echo 'script_update_game='"$INSTAL_GAME_SERVER_UPDATES" >> $CONFIG_DIR/$SERVICE_NAME-script.conf

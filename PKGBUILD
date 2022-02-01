@@ -2,7 +2,7 @@
 
 pkgname=mcsrv-script
 pkgver=1.3
-pkgrel=2
+pkgrel=3
 pkgdesc='Minecraft server script for running the server on linux.'
 arch=('x86_64')
 license=('GPL3')
@@ -37,7 +37,7 @@ source=('bash_profile'
         'mcsrv-tmpfs@.service')
 sha256sums=('f1e2f643b81b27d16fe79e0563e39c597ce42621ae7c2433fd5b70f1eeab5d63'
             '85792a07aa66663a8428006e454c7949c932a0f0796ccf60111c1a368a845fb8'
-            '13ce9aa08c919b6393ca694c1815bd5f9d438550478b2a56b738d8a8e901ffd2'
+            'e27c7c047eac84a639ce2c125c201c21b913214bb27edaa0ccf33dad546e4f3f'
             '0e533328a50d12981fc0624288234821175b5970363a6e2ba1de50bc0b2ccb8e'
             '5dc94b0c608f3662641e1cad2880dbbc0ec379ebe64ddd0b0bdd913053d79c19'
             'd702ea6f0e71fde0eb9ae4ae98260044dce3736eb3d9ac4c73ecd15f3211b986'
