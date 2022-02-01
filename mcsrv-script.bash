@@ -21,7 +21,7 @@
 
 #Static script variables
 export NAME="McSrv" #Name of the tmux session
-export VERSION="1.3-3" #Package and script version
+export VERSION="1.3-4" #Package and script version
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log
 export LOG_DIR="/srv/$SERVICE_NAME/logs"
 export LOG_STRUCTURE="$LOG_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #Location of the script's log files
@@ -200,7 +200,7 @@ script_add_server() {
 			read -p "Enable automatic updates from Mojang servers for this instance? (y/n): " SERVER_INSTANCE_ADD_UPDATES
 		fi
 
-		mkdir /srv/$SERVICE_NAME/$SERVER_INSTANCE_ADD
+		mkdir $SRV_DIR/$SERVER_INSTANCE_ADD
 
 		if [[ "$SERVER_INSTANCE_ADD_TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 			if [[ "$SERVER_INSTANCE_ADD_TYPE" == "1" ]]; then
@@ -305,7 +305,7 @@ script_remove_server() {
 
 			read -p "Delete the server folder for $SERVER_INSTANCE_REMOVE? (y/n): " DELETE_SERVER_INSTANCE
 			if [[ "$DELETE_SERVER_INSTANCE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-				rm -rf /srv/$SERVICE_NAME/$SERVER_INSTANCE_REMOVE
+				rm -rf $SRV_DIR/$SERVER_INSTANCE_REMOVE
 			fi
 
 			read -p "Delete the backup folder for $SERVER_INSTANCE_REMOVE? (y/n): " DELETE_SERVER_BACKUP
@@ -456,8 +456,8 @@ script_prestart() {
 
 	if [[ "$2" == "tmpfs" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Sync from disk to tmpfs for $1 has been initiated." | tee -a "$LOG_SCRIPT"
-		if [ -d "/srv/$SERVICE_NAME/$1" ]; then
-			rsync -aAX --info=progress2 /srv/$SERVICE_NAME/$1/ $TMPFS_DIR/$1
+		if [ -d "$SRV_DIR/$1" ]; then
+			rsync -aAX --info=progress2 $SRV_DIR/$1/ $TMPFS_DIR/$1
 		fi
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Sync from disk to tmpfs for $1 complete." | tee -a "$LOG_SCRIPT"
 	fi
@@ -517,7 +517,7 @@ script_poststop() {
 	if [[ "$2" == "tmpfs" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Sync from tmpfs to disk for $1 has been initiated." | tee -a "$LOG_SCRIPT"
 		if [ -d "$TMPFS_DIR/$1" ]; then
-			rsync -aAX --info=progress2 $TMPFS_DIR/$1/ /srv/$SERVICE_NAME/$1
+			rsync -aAX --info=progress2 $TMPFS_DIR/$1/ $SRV_DIR/$1
 		fi
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Sync from tmpfs to disk for $1 complete." | tee -a "$LOG_SCRIPT"
 	fi
@@ -743,7 +743,7 @@ script_sync() {
 		elif [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]] && [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Sync) Sync from tmpfs to disk for server $SERVER_INSTANCE has been initiated." | tee -a "$LOG_SCRIPT"
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Sync from tmpfs to disk has been initiated." ENTER
-			rsync -aAX --info=progress2 $TMPFS_DIR/$SERVER_INSTANCE/ /srv/$SERVICE_NAME/$SERVER_INSTANCE
+			rsync -aAX --info=progress2 $TMPFS_DIR/$SERVER_INSTANCE/ $SRV_DIR/$SERVER_INSTANCE
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Sync from tmpfs to disk has been completed." ENTER
 			sleep 1
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Sync) Sync from tmpfs to disk for server $SERVER_INSTANCE has been completed." | tee -a "$LOG_SCRIPT"
@@ -997,8 +997,8 @@ script_backup() {
 		elif [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]] && [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Server backup in progress." ENTER
 			script_backup_create_folder $SERVER_INSTANCE
-			cd "/srv/$SERVICE_NAME/$SERVER_INSTANCE"
-			tar -cpvzf $BCKP_DIR/$SERVER_INSTANCE/$BCKP_STRUCTURE/$(date +"%Y%m%d%H%M")_$SERVER_INSTANCE.tar.gz /srv/$SERVICE_NAME/$SERVER_INSTANCE/
+			cd "$SRV_DIR/$SERVER_INSTANCE"
+			tar -cpvzf $BCKP_DIR/$SERVER_INSTANCE/$BCKP_STRUCTURE/$(date +"%Y%m%d%H%M")_$SERVER_INSTANCE.tar.gz $SRV_DIR/$SERVER_INSTANCE/
 			/usr/bin/tmux -L $SERVICE_NAME-$SERVER_INSTANCE-tmux.sock send-keys -t $NAME.0 "say Server backup complete." ENTER
 		fi
 	done
@@ -1063,19 +1063,19 @@ script_update() {
 
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Updating server $SERVER_INSTANCE..." | tee -a "$LOG_SCRIPT"
 
-			if [ -f /srv/$SERVICE_NAME/$SERVER_INSTANCE/server.jar.old ] ; then
-				rm /srv/$SERVICE_NAME/$SERVER_INSTANCE/server.jar.old
+			if [ -f $SRV_DIR/$SERVER_INSTANCE/server.jar.old ] ; then
+				rm $SRV_DIR/$SERVER_INSTANCE/server.jar.old
 			fi
-			mv /srv/$SERVICE_NAME/$SERVER_INSTANCE/server.jar /srv/$SERVICE_NAME/$SERVER_INSTANCE/server.jar.old
-			wget -O /srv/$SERVICE_NAME/$SERVER_INSTANCE/server.jar "$JAR_URL"
+			mv $SRV_DIR/$SERVER_INSTANCE/server.jar $SRV_DIR/$SERVER_INSTANCE/server.jar.old
+			wget -O $SRV_DIR/$SERVER_INSTANCE/server.jar "$JAR_URL"
 
-			if [ -f /srv/$SERVICE_NAME/$SERVER_INSTANCE/server.jar ] ; then
+			if [ -f $SRV_DIR/$SERVER_INSTANCE/server.jar ] ; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Update for server $SERVER_INSTANCE completed." | tee -a "$LOG_SCRIPT"
 				echo "$LATEST_VERSION" > $UPDATE_DIR/$SERVER_INSTANCE/installed.version
 				echo "$JAR_SHA1" > $UPDATE_DIR/$SERVER_INSTANCE/installed.sha1
 			else
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Update for server $SERVER_INSTANCE failed. Restoring old server.jar file." | tee -a "$LOG_SCRIPT"
-				mv /srv/$SERVICE_NAME/$SERVER_INSTANCE/server.jar.old /srv/$SERVICE_NAME/$SERVER_INSTANCE/server.jar
+				mv $SRV_DIR/$SERVER_INSTANCE/server.jar.old $SRV_DIR/$SERVER_INSTANCE/server.jar
 				UPDATE_FAILED="1"
 			fi
 
@@ -1105,13 +1105,13 @@ script_update() {
 				fi
 			else
 				if [[ "$EMAIL_UPDATE" == "1" ]]; then
-					mail -r "$EMAIL_SENDER ($NAME-$SERVICE_NAME)" -s "Notification: Update" $EMAIL_RECIPIENT <<- EOF
+					mail -r "$EMAIL_SENDER ($NAME-$SERVICE_NAME)" -s "Notification: Update complete for server $SERVER_INSTANCE" $EMAIL_RECIPIENT <<- EOF
 					Server was updated. Please check the update notes if there are any additional steps to take.
 					EOF
 				fi
 				if [[ "$DISCORD_UPDATE" == "1" ]]; then
 					while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server update complete.\"}" "$DISCORD_WEBHOOK"
+						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server update for server $SERVER_INSTANCE complete.\"}" "$DISCORD_WEBHOOK"
 					done < $CONFIG_DIR/discord_webhooks.txt
 				fi
 			fi
@@ -1131,11 +1131,11 @@ script_server_tmux_install() {
 		TMUX_CONFIG_FILE="/tmp/$SERVICE_NAME-$1-tmux.conf"
 	elif [[ "$2" == "override" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Server tmux configuration) Installing tmux override configuration for server $1." | tee -a "$LOG_SCRIPT"
-		TMUX_CONFIG_FILE="/srv/$SERVICE_NAME/config/$SERVICE_NAME-$1-tmux.conf"
+		TMUX_CONFIG_FILE="$CONFIG_DIR/$SERVICE_NAME-$1-tmux.conf"
 	fi
 	
-	if [ -f /srv/$SERVICE_NAME/config/$SERVICE_NAME-$1-tmux.conf ]; then
-		cp /srv/$SERVICE_NAME/config/$SERVICE_NAME-$1-tmux.conf /tmp/$SERVICE_NAME-$1-tmux.conf
+	if [ -f $CONFIG_DIR/$SERVICE_NAME-$1-tmux.conf ]; then
+		cp $CONFIG_DIR/$SERVICE_NAME-$1-tmux.conf /tmp/$SERVICE_NAME-$1-tmux.conf
 	else
 		if [ ! -f $TMUX_CONFIG_FILE ]; then
 			touch $TMUX_CONFIG_FILE
@@ -1358,25 +1358,25 @@ script_diagnostics() {
 		echo "Script present: No"
 	fi
 	
-	if [ -d "/srv/$SERVICE_NAME/config" ]; then
+	if [ -d "$CONFIG_DIR" ]; then
 		echo "Configuration folder present: Yes"
 	else
 		echo "Configuration folder present: No"
 	fi
 
-	if [ -d "/srv/$SERVICE_NAME/backups" ]; then
+	if [ -d "$BCKP_DIR" ]; then
 		echo "Backups folder present: Yes"
 	else
 		echo "Backups folder present: No"
 	fi
 
-	if [ -d "/srv/$SERVICE_NAME/logs" ]; then
+	if [ -d "$LOF_DIR" ]; then
 		echo "Logs folder present: Yes"
 	else
 		echo "Logs folder present: No"
 	fi
 	
-	if [ -d "/srv/$SERVICE_NAME/updates" ]; then
+	if [ -d "$UPDATE_DIR" ]; then
 		echo "Updates folder present: Yes"
 	else
 		echo "Updates folder present: No"
@@ -1412,40 +1412,16 @@ script_diagnostics() {
 		echo "Tmpfs mkdir service present: No"
 	fi
 	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs-vanilla@.service" ]; then
+	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs@.service" ]; then
 		echo "Tmpfs service for vanilla present: Yes"
 	else
 		echo "Tmpfs service for vanilla present: No"
 	fi
 	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-vanilla@.service" ]; then
+	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME@.service" ]; then
 		echo "Basic service for vanilla present: Yes"
 	else
 		echo "Basic service for vanilla present: No"
-	fi
-	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs-spigot@.service" ]; then
-		echo "Tmpfs service for spigot present: Yes"
-	else
-		echo "Tmpfs service for spigot present: No"
-	fi
-	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-spigot@.service" ]; then
-		echo "Basic service for spigot present: Yes"
-	else
-		echo "Basic service for spigot present: No"
-	fi
-	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs-forge@.service" ]; then
-		echo "Tmpfs service for forge present: Yes"
-	else
-		echo "Tmpfs service for forge present: No"
-	fi
-	
-	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-forge@.service" ]; then
-		echo "Basic service for forge present: Yes"
-	else
-		echo "Basic service for forge present: No"
 	fi
 	
 	if [ -f "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-timer-1.timer" ]; then
@@ -1642,13 +1618,13 @@ script_config_email() {
 	fi
 
 	echo "Writing configuration file..."
-	echo 'email_sender='"$INSTALL_EMAIL_SENDER" >> /srv/$SERVICE_NAME/config/$SERVICE_NAME-email.conf
-	echo 'email_recipient='"$INSTALL_EMAIL_RECIPIENT" >> /srv/$SERVICE_NAME/config/$SERVICE_NAME-email.conf
-	echo 'email_update='"$INSTALL_EMAIL_UPDATE" >> /srv/$SERVICE_NAME/config/$SERVICE_NAME-email.conf
-	echo 'email_start='"$INSTALL_EMAIL_START" >> /srv/$SERVICE_NAME/config/$SERVICE_NAME-email.conf
-	echo 'email_stop='"$INSTALL_EMAIL_STOP" >> /srv/$SERVICE_NAME/config/$SERVICE_NAME-email.conf
-	echo 'email_crash='"$INSTALL_EMAIL_CRASH" >> /srv/$SERVICE_NAME/config/$SERVICE_NAME-email.conf
-	chown $SERVICE_NAME /srv/$SERVICE_NAME/config/$SERVICE_NAME-email.conf
+	echo 'email_sender='"$INSTALL_EMAIL_SENDER" >> $CONFIG_DIR/$SERVICE_NAME-email.conf
+	echo 'email_recipient='"$INSTALL_EMAIL_RECIPIENT" >> $CONFIG_DIR/$SERVICE_NAME-email.conf
+	echo 'email_update='"$INSTALL_EMAIL_UPDATE" >> $CONFIG_DIR/$SERVICE_NAME-email.conf
+	echo 'email_start='"$INSTALL_EMAIL_START" >> $CONFIG_DIR/$SERVICE_NAME-email.conf
+	echo 'email_stop='"$INSTALL_EMAIL_STOP" >> $CONFIG_DIR/$SERVICE_NAME-email.conf
+	echo 'email_crash='"$INSTALL_EMAIL_CRASH" >> $CONFIG_DIR/$SERVICE_NAME-email.conf
+	chown $SERVICE_NAME $CONFIG_DIR/$SERVICE_NAME-email.conf
 	echo "Done"
 }
 
