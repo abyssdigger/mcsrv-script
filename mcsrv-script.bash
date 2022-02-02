@@ -21,12 +21,11 @@
 
 #Static script variables
 export NAME="McSrv" #Name of the tmux session
-export VERSION="1.3-4" #Package and script version
+export VERSION="1.3-5" #Package and script version
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log
 export LOG_DIR="/srv/$SERVICE_NAME/logs"
 export LOG_STRUCTURE="$LOG_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #Location of the script's log files
 export LOG_SCRIPT="$LOG_STRUCTURE/$SERVICE_NAME-script.log" #Script log
-export CRASH_DIR="$LOG_DIR/crashes/$(date +"%Y-%m-%d_%H-%M")" #Location of
 SRV_DIR="/srv/$SERVICE_NAME/server" #Location of the server located on your hdd/ssd
 TMPFS_DIR="/srv/$SERVICE_NAME/tmpfs" #Locaton of your tmpfs partition.
 CONFIG_DIR="/srv/$SERVICE_NAME/config" #Location of this script
@@ -255,14 +254,17 @@ script_add_server() {
 			systemctl --user enable $SERVICE_NAME@$SERVER_INSTANCE_ADD.service
 		fi
 		systemctl --user daemon-reload
-
-		read -p "Server instance $SERVER_INSTANCE_ADD added successfully. Do you want to start it? (y/n): " START_SERVER_INSTANCE_ADD
-		if [[ "$START_SERVER_INSTANCE_ADD" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-			if [[ "$SERVER_INSTANCE_ADD_TMPFS_ENABLE" == "1" ]]; then
-				$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service
-			else
-				$SERVICE_NAME@$SERVER_INSTANCE_ADD.service
+		if [ -f "$SRV_DIR/server.jar" ] || [ -f "$(ls -v $SRV_DIR/$SERVER_INSTANCE_ADD | grep -i "forge" | grep -i ".jar" | head -n 1)" ] || [ -f "$(ls -v $SRV_DIR/$SERVER_INSTANCE_ADD | grep -i "spigot" | grep -i ".jar" | head -n 1)" ]; then
+			read -p "Server instance $SERVER_INSTANCE_ADD added successfully. Do you want to start it? (y/n): " START_SERVER_INSTANCE_ADD
+			if [[ "$START_SERVER_INSTANCE_ADD" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+				if [[ "$SERVER_INSTANCE_ADD_TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+					systemctl --user start $SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service
+				else
+					systemctl --user start $SERVICE_NAME@$SERVER_INSTANCE_ADD.service
+				fi
 			fi
+		else
+			echo "No supported jar file found. Copy your server files to $SRV_DIR/$SERVER_INSTANCE_ADD and start the server."
 		fi
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Add server instance) Server instance $SERVER_INSTANCE_ADD successfully added." | tee -a "$LOG_SCRIPT"
 	else
@@ -282,9 +284,7 @@ script_remove_server() {
 		for SERVER_SERVICE in $(cat $CONFIG_DIR/$SERVICE_NAME-server-list.txt | tr "\\n" "," | sed 's/,$//'); do
 			SERVER_INSTANCE_LIST=("$SERVER_SERVICE" "${SERVER_INSTANCE_LIST[@]}")
 		done
-
 		SERVER_INSTANCE_LIST=("Cancel" "${SERVER_INSTANCE_LIST[@]}")
-
 		select SERVER_INSTANCE in "${SERVER_INSTANCE_LIST[@]}"; do
 			SERVER_INSTANCE_REMOVE=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 			if [[ "$SERVER_INSTANCE_REMOVE" == "Cancel" ]]; then
@@ -302,20 +302,17 @@ script_remove_server() {
 				systemctl --user disable $SERVICE_NAME-mkdir-tmpfs@$SERVER_INSTANCE_REMOVE.service
 			fi
 			systemctl --user disable $SERVER_INSTANCE
-
-			read -p "Delete the server folder for $SERVER_INSTANCE_REMOVE? (y/n): " DELETE_SERVER_INSTANCE
-			if [[ "$DELETE_SERVER_INSTANCE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-				rm -rf $SRV_DIR/$SERVER_INSTANCE_REMOVE
-			fi
-
-			read -p "Delete the backup folder for $SERVER_INSTANCE_REMOVE? (y/n): " DELETE_SERVER_BACKUP
-			if [[ "$DELETE_SERVER_BACKUP" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-				rm -rf $BCKP_DIR/$SERVER_INSTANCE_REMOVE
-			fi
-
 			read -p "Server instance $SERVER_INSTANCE removed successfully. Do you want to stop it? (y/n): " STOP_SERVER_INSTANCE
 			if [[ "$STOP_SERVER_INSTANCE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				systemctl --user stop $SERVER_INSTANCE
+				read -p "Delete the server folder for $SERVER_INSTANCE_REMOVE? (y/n): " DELETE_SERVER_INSTANCE
+				if [[ "$DELETE_SERVER_INSTANCE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+					rm -rf $SRV_DIR/$SERVER_INSTANCE_REMOVE
+				fi
+			fi
+			read -p "Delete the backup folder for $SERVER_INSTANCE_REMOVE? (y/n): " DELETE_SERVER_BACKUP
+			if [[ "$DELETE_SERVER_BACKUP" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+				rm -rf $BCKP_DIR/$SERVER_INSTANCE_REMOVE
 			fi
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove server instance) Server instance $SERVER_INSTANCE_REMOVE successfully removed." | tee -a "$LOG_SCRIPT"
 			break
@@ -449,7 +446,7 @@ script_prestart() {
 	fi
 	if [[ "$DISCORD_START" == "1" ]]; then
 		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Server startup for $1 was initialized.\"}" "$DISCORD_WEBHOOK"
+			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Start) Server startup for $1 was initialized.\"}" "$DISCORD_WEBHOOK"
 		done < $CONFIG_DIR/discord_webhooks.txt
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Server startup for $1 was initialized." | tee -a "$LOG_SCRIPT"
@@ -475,7 +472,7 @@ script_poststart() {
 	fi
 	if [[ "$DISCORD_START" == "1" ]]; then
 		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Server startup for $1 complete.\"}" "$DISCORD_WEBHOOK"
+			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Start) Server startup for $1 complete.\"}" "$DISCORD_WEBHOOK"
 		done < $CONFIG_DIR/discord_webhooks.txt
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Server startup for $1 complete." | tee -a "$LOG_SCRIPT"
@@ -493,7 +490,7 @@ script_prestop() {
 	fi
 	if [[ "$DISCORD_STOP" == "1" ]]; then
 		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Stop) Server shutdown for $1 was initialized.\"}" "$DISCORD_WEBHOOK"
+			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Stop) Server shutdown for $1 was initialized.\"}" "$DISCORD_WEBHOOK"
 		done < $CONFIG_DIR/discord_webhooks.txt
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Stop) Server shutdown for $1 was initialized." | tee -a "$LOG_SCRIPT"
@@ -537,7 +534,7 @@ script_poststop() {
 	fi
 	if [[ "$DISCORD_STOP" == "1" ]]; then
 		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Stop) Server shutdown for $1 complete.\"}" "$DISCORD_WEBHOOK"
+			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Stop) Server shutdown for $1 complete.\"}" "$DISCORD_WEBHOOK"
 		done < $CONFIG_DIR/discord_webhooks.txt
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Stop) Server shutdown for $1 complete." | tee -a "$LOG_SCRIPT"
@@ -548,37 +545,40 @@ script_poststop() {
 #Systemd service sends email if email notifications for crashes enabled
 script_send_notification_crash() {
 	script_logs
-	if [ ! -d "$CRASH_DIR" ]; then
-		mkdir -p "$CRASH_DIR"
+	CRASH_TIME=$(date +"%Y-%m-%d_%H-%M")
+	if [ ! -d "$LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME" ]; then
+		mkdir -p "$LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME"
 	fi
-	
-	systemctl --user status $SERVICE@$1.service > $CRASH_DIR/service_log.txt
-	zip -j $CRASH_DIR/service_logs.zip $CRASH_DIR/service_log.txt
-	zip -j $CRASH_DIR/script_logs.zip $LOG_SCRIPT
-	rm $CRASH_DIR/service_log.txt
-	
+
+	if [[ "$(systemctl --user show -p UnitFileState --value $SERVICE_NAME-tmpfs@$1.service)" == "enabled" ]]; then
+		systemctl --user status $SERVICE_NAME-tmpfs@$1.service > $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME/service_log.txt
+		find "$TMPFS_DIR/$1/logs/" -maxdepth 1 -type f \( ! -iname "*.gz" \) -mmin -30 -exec zip $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME/game_logs.zip -j {} +
+	elif [[ "$(systemctl --user show -p UnitFileState --value $SERVICE_NAME@$1.service)" == "enabled" ]]; then
+		systemctl --user status $SERVICE_NAME@$1.service > $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME/service_log.txt
+		find "$SRV_DIR/$1/logs/" -maxdepth 1 -type f \( ! -iname "*.gz" \) -mmin -30 -exec zip $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME/game_logs.zip -j {} +
+	fi
+
+	zip -j $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME/service_logs.zip $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME/service_log.txt
+	zip -j $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME/script_logs.zip $LOG_SCRIPT
+	rm $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME/service_log.txt
+
 	if [[ "$EMAIL_CRASH" == "1" ]]; then
-		mail -a $CRASH_DIR/service_logs.zip -a $CRASH_DIR/script_logs.zip -a -r "$EMAIL_SENDER ($NAME)" -s "Notification: Crash" $EMAIL_RECIPIENT <<- EOF
+		mail -a $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME/service_logs.zip -a $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME/script_logs.zip -a $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME/game_logs.zip -r "$EMAIL_SENDER ($NAME $SERVICE_NAME)" -s "Notification: Server $1 crash" $EMAIL_RECIPIENT <<- EOF
 		The $NAME server $1 crashed 3 times in the last 5 minutes. Automatic restart is disabled and the server is inactive. Please check the logs for more information.
-		
+
 		Attachment contents:
 		service_logs.zip - Logs from the systemd service
 		script_logs.zip - Logs from the script
-		
-		DO NOT SEND ANY OF THESE TO THE DEVS!
-		
-		Contact the script developer 7thCore on discord for help regarding any problems the script may have caused.
+		game_logs.zip - Logs from the game
 		EOF
 	fi
-	
+
 	if [[ "$DISCORD_CRASH" == "1" ]]; then
 		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Crash) The server crashed 3 times in the last 5 minutes. Automatic restart is disabled and the server is inactive. Please review your logs located in $CRASH_DIR.\"}" "$DISCORD_WEBHOOK"
+			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Crash) Server $1 crashed 3 times in the last 5 minutes. Automatic restart is disabled and the server is inactive. Please review your logs located in $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME.\"}" "$DISCORD_WEBHOOK"
 		done < $CONFIG_DIR/discord_webhooks.txt
 	fi
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Crash) Server crashed. Please review your logs located in $CRASH_DIR." | tee -a "$LOG_SCRIPT"
-
-	touch /tmp/$(id -u $SERVICE_NAME).crash
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Crash) Server $1 crashed. Please review your logs located in $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME." | tee -a "$LOG_SCRIPT"
 }
 
 #---------------------------
@@ -1048,7 +1048,7 @@ script_update() {
 
 			if [[ "$DISCORD_UPDATE" == "1" ]]; then
 				while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-					curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) New update for server $SERVER_INSTANCE detected. Installing update.\"}" "$DISCORD_WEBHOOK"
+					curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Update) New update for server $SERVER_INSTANCE detected. Installing update.\"}" "$DISCORD_WEBHOOK"
 				done < $CONFIG_DIR/discord_webhooks.txt
 			fi
 
@@ -1100,7 +1100,7 @@ script_update() {
 				fi
 				if [[ "$DISCORD_UPDATE" == "1" ]]; then
 					while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server update for server $SERVER_INSTANCE failed.\"}" "$DISCORD_WEBHOOK"
+						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Update) Server update for server $SERVER_INSTANCE failed.\"}" "$DISCORD_WEBHOOK"
 					done < $CONFIG_DIR/discord_webhooks.txt
 				fi
 			else
@@ -1111,7 +1111,7 @@ script_update() {
 				fi
 				if [[ "$DISCORD_UPDATE" == "1" ]]; then
 					while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server update for server $SERVER_INSTANCE complete.\"}" "$DISCORD_WEBHOOK"
+						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Update) Server update for server $SERVER_INSTANCE complete.\"}" "$DISCORD_WEBHOOK"
 					done < $CONFIG_DIR/discord_webhooks.txt
 				fi
 			fi
