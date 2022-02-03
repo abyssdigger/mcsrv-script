@@ -17,11 +17,19 @@
 [Unit]
 Description=McSrv TmpFs dir creator
 After=srv-mcsrv-tmpfs.mount
+StartLimitBurst=3
+StartLimitIntervalSec=300
+StartLimitAction=none
 
 [Service]
 Type=oneshot
+RemainAfterExit=true
 WorkingDirectory=/srv/mcsrv
 ExecStart=/bin/mkdir -p /srv/mcsrv/tmpfs/%i
+TimeoutStartSec=infinity
+TimeoutStopSec=120
+RestartSec=10
+Restart=on-failure
 
 [Install]
 WantedBy=default.target

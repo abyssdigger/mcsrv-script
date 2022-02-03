@@ -21,7 +21,7 @@
 
 #Static script variables
 export NAME="McSrv" #Name of the tmux session
-export VERSION="1.3-5" #Package and script version
+export VERSION="1.3-6" #Package and script version
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log
 export LOG_DIR="/srv/$SERVICE_NAME/logs"
 export LOG_STRUCTURE="$LOG_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #Location of the script's log files
@@ -73,11 +73,23 @@ if [ -f "$CONFIG_DIR/$SERVICE_NAME-discord.conf" ] ; then
 	DISCORD_START=$(cat $CONFIG_DIR/$SERVICE_NAME-discord.conf | grep discord_start= | cut -d = -f2) #Send notifications when the server starts
 	DISCORD_STOP=$(cat $CONFIG_DIR/$SERVICE_NAME-discord.conf | grep discord_stop= | cut -d = -f2) #Send notifications when the server stops
 	DISCORD_CRASH=$(cat $CONFIG_DIR/$SERVICE_NAME-discord.conf | grep discord_crash= | cut -d = -f2) #Send notifications when the server crashes
+	DISCORD_COLOR_PRESTART=$(cat $CONFIG_DIR/$SERVICE_NAME-discord.conf | grep discord_color_prestart= | cut -d = -f2) #Discord embed color for prestart
+	DISCORD_COLOR_POSTSTART=$(cat $CONFIG_DIR/$SERVICE_NAME-discord.conf | grep discord_color_poststart= | cut -d = -f2) #Discord embed color for poststart
+	DISCORD_COLOR_PRESTOP=$(cat $CONFIG_DIR/$SERVICE_NAME-discord.conf | grep discord_color_prestop= | cut -d = -f2) #Discord embed color for prestop
+	DISCORD_COLOR_POSTSTOP=$(cat $CONFIG_DIR/$SERVICE_NAME-discord.conf | grep discord_color_poststop= | cut -d = -f2) #Discord embed color for poststop
+	DISCORD_COLOR_UPDATE=$(cat $CONFIG_DIR/$SERVICE_NAME-discord.conf | grep discord_color_update= | cut -d = -f2) #Discord embed color for update
+	DISCORD_COLOR_CRASH=$(cat $CONFIG_DIR/$SERVICE_NAME-discord.conf | grep discord_color_crash= | cut -d = -f2) #Discord embed color for crash
 else
 	DISCORD_UPDATE="0"
 	DISCORD_START="0"
 	DISCORD_STOP="0"
 	DISCORD_CRASH="0"
+	DISCORD_COLOR_PRESTART="16776960"
+	DISCORD_COLOR_POSTSTART="65280"
+	DISCORD_COLOR_PRESTOP="16776960"
+	DISCORD_COLOR_POSTSTOP="65280"
+	DISCORD_COLOR_UPDATE="47083"
+	DISCORD_COLOR_CRASH="16711680"
 fi
 
 #Console collors
@@ -95,8 +107,17 @@ NC='\033[0m'
 script_logs() {
 	#If there is not a folder for today, create one
 	if [ ! -d "$LOG_STRUCTURE" ]; then
-		mkdir -p $LOG_STRUCTURE
+		mkdir -p "$LOG_STRUCTURE"
 	fi
+}
+
+#---------------------------
+
+#Discord webhook message send
+script_discord_message() {
+		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
+			curl -H "Content-Type: application/json" -X POST -d "{\"embeds\": [{ \"author\": { \"name\": \"$NAME Script\", \"url\": \"https://github.com/7thCore/$SERVICE_NAME-script\" }, \"color\": \"$1\", \"description\": \"$2\", \"footer\": {\"text\": \"Version $VERSION\"}, \"timestamp\": \"$(date -u --iso-8601=seconds)\"}] }" "$DISCORD_WEBHOOK"
+		done < $CONFIG_DIR/discord_webhooks.txt
 }
 
 #---------------------------
@@ -162,7 +183,7 @@ script_add_server() {
 	#Loop until the server is active and output the state of it
 	script_add_server_vanilla_download() {
 		if [ ! -d "$UPDATE_DIR/$1" ]; then
-			mkdir -p $UPDATE_DIR/$1
+			mkdir -p "$UPDATE_DIR/$1"
 		fi
 		LATEST_VERSION=$(curl -s "https://launchermeta.mojang.com/mc/game/version_manifest.json" | jq -r '.latest.release')
 		JSON_URL=$(curl -s "https://launchermeta.mojang.com/mc/game/version_manifest.json" | jq ".versions[] | select(.id==\"$LATEST_VERSION\") .url" | sed 's/"//g')
@@ -199,7 +220,7 @@ script_add_server() {
 			read -p "Enable automatic updates from Mojang servers for this instance? (y/n): " SERVER_INSTANCE_ADD_UPDATES
 		fi
 
-		mkdir $SRV_DIR/$SERVER_INSTANCE_ADD
+		mkdir "$SRV_DIR/$SERVER_INSTANCE_ADD"
 
 		if [[ "$SERVER_INSTANCE_ADD_TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 			if [[ "$SERVER_INSTANCE_ADD_TYPE" == "1" ]]; then
@@ -210,14 +231,14 @@ script_add_server() {
 					echo "$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service" >> $CONFIG_DIR/$SERVICE_NAME-server-update-list.txt
 				fi
 			elif [[ "$SERVER_INSTANCE_ADD_TYPE" == "2" ]]; then
-				mkdir -p /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service.d
+				mkdir -p "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service.d"
 				cat > /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service.d/override.conf <<- 'EOF'
 				[Service]
 				ExecStart=
 				ExecStart=/usr/bin/tmux -f /tmp/%u-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s McSrv 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar $(ls -v /srv/mcsrv/tmpfs/%i | grep -i "forge" | grep -i ".jar" | head -n 1)'
 				EOF
 			elif [[ "$SERVER_INSTANCE_ADD_TYPE" == "3" ]]; then
-				mkdir -p /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service.d
+				mkdir -p "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service.d"
 				cat > /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service.d/override.conf <<- 'EOF'
 				[Service]
 				ExecStart=
@@ -236,14 +257,14 @@ script_add_server() {
 					echo "$SERVICE_NAME@$SERVER_INSTANCE_ADD.service" >> $CONFIG_DIR/$SERVICE_NAME-server-update-list.txt
 				fi
 			elif [[ "$SERVER_INSTANCE_ADD_TYPE" == "2" ]]; then
-				mkdir -p /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME@$SERVER_INSTANCE_ADD.service.d
+				mkdir -p "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME@$SERVER_INSTANCE_ADD.service.d"
 				cat > /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME@$SERVER_INSTANCE_ADD.service.d/override.conf <<- 'EOF'
 				[Service]
 				ExecStart=
 				ExecStart=/usr/bin/tmux -f /tmp/%u-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s McSrv 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar $(ls -v /srv/mcsrv/%i | grep -i "forge" | grep -i ".jar" | head -n 1)'
 				EOF
 			elif [[ "$SERVER_INSTANCE_ADD_TYPE" == "3" ]]; then
-				mkdir -p /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME@$SERVER_INSTANCE_ADD.service.d
+				mkdir -p "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME@$SERVER_INSTANCE_ADD.service.d"
 				cat > /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME@$SERVER_INSTANCE_ADD.service.d/override.conf <<- 'EOF'
 				[Service]
 				ExecStart=
@@ -445,9 +466,7 @@ script_prestart() {
 		EOF
 	fi
 	if [[ "$DISCORD_START" == "1" ]]; then
-		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Start) Server startup for $1 was initialized.\"}" "$DISCORD_WEBHOOK"
-		done < $CONFIG_DIR/discord_webhooks.txt
+		script_discord_message "$DISCORD_COLOR_PRESTART" "Server startup for $1 was initialized."
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Server startup for $1 was initialized." | tee -a "$LOG_SCRIPT"
 
@@ -471,9 +490,7 @@ script_poststart() {
 		EOF
 	fi
 	if [[ "$DISCORD_START" == "1" ]]; then
-		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Start) Server startup for $1 complete.\"}" "$DISCORD_WEBHOOK"
-		done < $CONFIG_DIR/discord_webhooks.txt
+		script_discord_message "$DISCORD_COLOR_POSTSTART" "Server startup for $1 complete."
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Server startup for $1 complete." | tee -a "$LOG_SCRIPT"
 }
@@ -489,9 +506,7 @@ script_prestop() {
 		EOF
 	fi
 	if [[ "$DISCORD_STOP" == "1" ]]; then
-		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Stop) Server shutdown for $1 was initialized.\"}" "$DISCORD_WEBHOOK"
-		done < $CONFIG_DIR/discord_webhooks.txt
+		script_discord_message "$DISCORD_COLOR_PRESTOP" "Server shutdown for $1 was initialized."
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Stop) Server shutdown for $1 was initialized." | tee -a "$LOG_SCRIPT"
 }
@@ -533,9 +548,7 @@ script_poststop() {
 		EOF
 	fi
 	if [[ "$DISCORD_STOP" == "1" ]]; then
-		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Stop) Server shutdown for $1 complete.\"}" "$DISCORD_WEBHOOK"
-		done < $CONFIG_DIR/discord_webhooks.txt
+		script_discord_message "$DISCORD_COLOR_POSTSTOP" "Server shutdown for $1 complete."
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Stop) Server shutdown for $1 complete." | tee -a "$LOG_SCRIPT"
 }
@@ -574,9 +587,7 @@ script_send_notification_crash() {
 	fi
 
 	if [[ "$DISCORD_CRASH" == "1" ]]; then
-		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Crash) Server $1 crashed 3 times in the last 5 minutes. Automatic restart is disabled and the server is inactive. Please review your logs located in $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME.\"}" "$DISCORD_WEBHOOK"
-		done < $CONFIG_DIR/discord_webhooks.txt
+		script_discord_message "$DISCORD_COLOR_CRASH" "Server $1 crashed 3 times in the last 5 minutes. Automatic restart is disabled and the server is inactive. Please review your logs located in $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME."
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Crash) Server $1 crashed. Please review your logs located in $LOG_STRUCTURE/Server-$1-crash_$CRASH_TIME." | tee -a "$LOG_SCRIPT"
 }
@@ -972,7 +983,7 @@ script_backup() {
 	#If there is not a folder for today, create one
 	script_backup_create_folder() {
 		if [ ! -d "$BCKP_DIR/$1/$BCKP_STRUCTURE" ]; then
-			mkdir -p $BCKP_DIR/$1/$BCKP_STRUCTURE
+			mkdir -p "$BCKP_DIR/$1/$BCKP_STRUCTURE"
 		fi
 	}
 
@@ -1047,9 +1058,7 @@ script_update() {
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Server $SERVER_INSTANCE available version: $LATEST_VERSION, SHA1: $JAR_SHA1" | tee -a "$LOG_SCRIPT"
 
 			if [[ "$DISCORD_UPDATE" == "1" ]]; then
-				while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-					curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Update) New update for server $SERVER_INSTANCE detected. Installing update.\"}" "$DISCORD_WEBHOOK"
-				done < $CONFIG_DIR/discord_webhooks.txt
+				script_discord_message "$DISCORD_COLOR_UPDATE" "New update detected. Installing update."
 			fi
 
 			if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]] && [[ "$(systemctl --user show -p UnitFileState --value $SERVER_SERVICE)" == "enabled" ]]; then
@@ -1081,7 +1090,7 @@ script_update() {
 
 			if [ "$WAS_ACTIVE" == "1" ]; then
 				if [[ "$(echo $SERVER_SERVICE | awk -F '@' '{print $1}')" == "$SERVICE_NAME-tmpfs" ]]; then
-					mkdir -p $TMPFS_DIR/$SERVER_INSTANCE
+					mkdir -p "$TMPFS_DIR/$SERVER_INSTANCE"
 				fi
 
 				sleep 1
@@ -1099,9 +1108,7 @@ script_update() {
 					EOF
 				fi
 				if [[ "$DISCORD_UPDATE" == "1" ]]; then
-					while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Update) Server update for server $SERVER_INSTANCE failed.\"}" "$DISCORD_WEBHOOK"
-					done < $CONFIG_DIR/discord_webhooks.txt
+					script_discord_message "$DISCORD_COLOR_UPDATE" "Server update for server $SERVER_INSTANCE failed."
 				fi
 			else
 				if [[ "$EMAIL_UPDATE" == "1" ]]; then
@@ -1110,9 +1117,7 @@ script_update() {
 					EOF
 				fi
 				if [[ "$DISCORD_UPDATE" == "1" ]]; then
-					while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"[$VERSION] [$NAME] (Update) Server update for server $SERVER_INSTANCE complete.\"}" "$DISCORD_WEBHOOK"
-					done < $CONFIG_DIR/discord_webhooks.txt
+					script_discord_message "$DISCORD_COLOR_UPDATE" "Server update for server $SERVER_INSTANCE complete."
 				fi
 			fi
 		elif [[ "$JAR_SHA1" == "$INSTALLED_SHA1" ]]; then
@@ -1515,10 +1520,16 @@ script_config_discord() {
 
 	echo "Writing configuration file..."
 	touch $CONFIG_DIR/$SERVICE_NAME-discord.conf
-	echo 'discord_update='"$INSTALL_DISCORD_UPDATE" >> $CONFIG_DIR/$SERVICE_NAME-discord.conf
+	echo 'discord_update='"$INSTALL_DISCORD_UPDATE" > $CONFIG_DIR/$SERVICE_NAME-discord.conf
 	echo 'discord_start='"$INSTALL_DISCORD_START" >> $CONFIG_DIR/$SERVICE_NAME-discord.conf
 	echo 'discord_stop='"$INSTALL_DISCORD_STOP" >> $CONFIG_DIR/$SERVICE_NAME-discord.conf
 	echo 'discord_crash='"$INSTALL_DISCORD_CRASH" >> $CONFIG_DIR/$SERVICE_NAME-discord.conf
+	echo 'discord_color_prestart=16776960' >> $CONFIG_DIR/$SERVICE_NAME-discord.conf
+	echo 'discord_color_poststart=65280' >> $CONFIG_DIR/$SERVICE_NAME-discord.conf
+	echo 'discord_color_prestop=16776960' >> $CONFIG_DIR/$SERVICE_NAME-discord.conf
+	echo 'discord_color_poststop=65280' >> $CONFIG_DIR/$SERVICE_NAME-discord.conf
+	echo 'discord_color_update=47083' >> $CONFIG_DIR/$SERVICE_NAME-discord.conf
+	echo 'discord_color_crash=16711680' >> $CONFIG_DIR/$SERVICE_NAME-discord.conf
 	echo "$INSTALL_DISCORD_WEBHOOK" > $CONFIG_DIR/discord_webhooks.txt
 	echo "Done"
 }
@@ -1618,7 +1629,7 @@ script_config_email() {
 	fi
 
 	echo "Writing configuration file..."
-	echo 'email_sender='"$INSTALL_EMAIL_SENDER" >> $CONFIG_DIR/$SERVICE_NAME-email.conf
+	echo 'email_sender='"$INSTALL_EMAIL_SENDER" > $CONFIG_DIR/$SERVICE_NAME-email.conf
 	echo 'email_recipient='"$INSTALL_EMAIL_RECIPIENT" >> $CONFIG_DIR/$SERVICE_NAME-email.conf
 	echo 'email_update='"$INSTALL_EMAIL_UPDATE" >> $CONFIG_DIR/$SERVICE_NAME-email.conf
 	echo 'email_start='"$INSTALL_EMAIL_START" >> $CONFIG_DIR/$SERVICE_NAME-email.conf
@@ -1682,7 +1693,7 @@ script_config_script() {
 	read -p "Install ServerSync (Usefull for syncing custom modpacks with players)? (y/n): " SERVERSYNC_SETUP
 	if [[ "$SERVERSYNC_SETUP" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		echo "Downloading and installing ServerSync from github."
-		mkdir -p /srv/$SERVICE_NAME/server01_sync
+		mkdir -p "/srv/$SERVICE_NAME/server01_sync"
 		curl -s https://api.github.com/repos/superzanti/ServerSync/releases/latest | jq -r ".assets[] | select(.name | contains(\"jar\")) | .browser_download_url" | wget -i -
 		mv *serversync* /srv/$SERVICE_NAME/server01_sync
 		systemctl --user enable $SERVICE_NAME-serversync@server01.service
@@ -1690,12 +1701,8 @@ script_config_script() {
 
 	echo "Writing config files"
 
-	if [ -f "$CONFIG_DIR/$SERVICE_NAME-script.conf" ]; then
-		rm $CONFIG_DIR/$SERVICE_NAME-script.conf
-	fi
-
 	touch $CONFIG_DIR/$SERVICE_NAME-script.conf
-	echo 'script_bckp_delold=7' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
+	echo 'script_bckp_delold=7' > $CONFIG_DIR/$SERVICE_NAME-script.conf
 	echo 'script_log_delold=7' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
 	echo 'script_log_game_delold=7' >> $CONFIG_DIR/$SERVICE_NAME-script.conf
 	echo 'script_update_game='"$INSTAL_GAME_SERVER_UPDATES" >> $CONFIG_DIR/$SERVICE_NAME-script.conf

@@ -1,8 +1,22 @@
-# Maintainer: 7thCore
+#    Copyright (C) 2022 7thCore
+#    This file is part of IsRSrv-Script.
+#
+#    IsRSrv-Script is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    IsRSrv-Script is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pkgname=mcsrv-script
 pkgver=1.3
-pkgrel=5
+pkgrel=6
 pkgdesc='Minecraft server script for running the server on linux.'
 arch=('x86_64')
 license=('GPL3')
@@ -36,8 +50,8 @@ source=('bash_profile'
         'mcsrv-timer-2.timer'
         'mcsrv-tmpfs@.service')
 sha256sums=('f1e2f643b81b27d16fe79e0563e39c597ce42621ae7c2433fd5b70f1eeab5d63'
-            '85792a07aa66663a8428006e454c7949c932a0f0796ccf60111c1a368a845fb8'
-            '2599450eaf211417299d103c7803511352ef0356bc70b442311e23c2d599e4df'
+            '18b61b2c2fc5adcf28965126fe0b714112d584999476b1d4a8815a734e5d7abe'
+            'c7cb7cbcdd4dd09751a807fc822926c0d505215d4248364ec8d37a4b840092e7'
             '0e533328a50d12981fc0624288234821175b5970363a6e2ba1de50bc0b2ccb8e'
             '5dc94b0c608f3662641e1cad2880dbbc0ec379ebe64ddd0b0bdd913053d79c19'
             '257952bb07922e11fc215f61ec9d9173ef2d571cd5b835653c7fc2ad8e954c1c'
