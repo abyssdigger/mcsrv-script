@@ -21,7 +21,7 @@
 
 #Static script variables
 export NAME="McSrv" #Name of the tmux session.
-export VERSION="1.4-2" #Package and script version.
+export VERSION="1.4-3" #Package and script version.
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log.
 export LOG_DIR="/srv/$SERVICE_NAME/logs" #Location of the script's log files.
 export LOG_STRUCTURE="$LOG_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #Folder structure of the script's log files.
@@ -911,7 +911,13 @@ script_update() {
 				rm $SRV_DIR/$SERVER_INSTANCE/server.jar.old
 			fi
 			mv $SRV_DIR/$SERVER_INSTANCE/server.jar $SRV_DIR/$SERVER_INSTANCE/server.jar.old
-			wget -O $SRV_DIR/$SERVER_INSTANCE/server.jar "$JAR_URL"
+
+			while [[ "$JAR_SHA1" != "$(sha1sum $SRV_DIR/$SERVER_INSTANCE/server.jar | awk '{print $1}')" ]]; do
+				if [ -f $SRV_DIR/$SERVER_INSTANCE/server.jar ] ; then
+					rm $SRV_DIR/$SERVER_INSTANCE/server.jar
+				fi
+				wget -O $SRV_DIR/$SERVER_INSTANCE/server.jar "$JAR_URL"
+			done
 
 			if [ -f $SRV_DIR/$SERVER_INSTANCE/server.jar ] ; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] (Update) Update for server $SERVER_INSTANCE completed." | tee -a "$LOG_SCRIPT"
