@@ -21,7 +21,7 @@
 
 #Static script variables
 export NAME="McSrv" #Name of the tmux session.
-export VERSION="1.4-3" #Package and script version.
+export VERSION="1.4-4" #Package and script version.
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log.
 export LOG_DIR="/srv/$SERVICE_NAME/logs" #Location of the script's log files.
 export LOG_STRUCTURE="$LOG_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #Folder structure of the script's log files.
@@ -212,7 +212,7 @@ script_status() {
 script_add_server() {
 	script_logs
 
-	#Loop until the server is active and output the state of it
+	#Downloads game files
 	script_add_server_vanilla_download() {
 		if [ ! -d "$UPDATE_DIR/$1" ]; then
 			mkdir -p "$UPDATE_DIR/$1"
@@ -223,7 +223,13 @@ script_add_server() {
 		JAR_URL=$(curl -s "$JSON_URL" | jq '.downloads.server .url' | sed 's/"//g')
 		echo "$LATEST_VERSION" > $UPDATE_DIR/$1/installed.version
 		echo "$JAR_SHA1" > $UPDATE_DIR/$1/installed.sha1
-		wget -O /srv/$SERVICE_NAME/$1/server.jar "$JAR_URL"
+
+		while [[ "$JAR_SHA1" != "$(sha1sum $SRV_DIR/$1/server.jar | awk '{print $1}')" ]]; do
+			if [ -f $SRV_DIR/$1/server.jar ] ; then
+				rm $SRV_DIR/$1/server.jar
+			fi
+			wget -O $SRV_DIR/$1/server.jar "$JAR_URL"
+		done
 	}
 
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] (Add server instance) User adding new server instance." | tee -a "$LOG_SCRIPT"
