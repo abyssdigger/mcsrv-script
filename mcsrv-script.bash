@@ -21,14 +21,15 @@
 
 #Static script variables
 export NAME="McSrv" #Name of the tmux session.
-export VERSION="1.4-4" #Package and script version.
+export VERSION="1.4-5" #Package and script version.
 export SERVICE_NAME="mcsrv" #Name of the service files, user, script and script log.
 export LOG_DIR="/srv/$SERVICE_NAME/logs" #Location of the script's log files.
 export LOG_STRUCTURE="$LOG_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #Folder structure of the script's log files.
 export LOG_SCRIPT="$LOG_STRUCTURE/$SERVICE_NAME-script.log" #Script log.
 SRV_DIR="/srv/$SERVICE_NAME/server" #Location of the server located on your hdd/ssd.
 TMPFS_DIR="/srv/$SERVICE_NAME/tmpfs" #Locaton of your tmpfs partition.
-CONFIG_DIR="/srv/$SERVICE_NAME/config" #Location of this script.
+CONFIG_DIR="/srv/$SERVICE_NAME/config" #Location of script configuration.
+ENV_DIR="/srv/$SERVICE_NAME/environments" #Location of server environment configurations.
 UPDATE_DIR="/srv/$SERVICE_NAME/updates" #Location of update information for the script's automatic update feature.
 BCKP_DIR="/srv/$SERVICE_NAME/backups" #Location of stored backups.
 BCKP_STRUCTURE="$(date +"%Y")/$(date +"%m")/$(date +"%d")" #How backups are sorted, by default it's sorted in folders by month and day.
@@ -258,6 +259,48 @@ script_add_server() {
 			read -p "Enable automatic updates from Mojang servers for this instance? (y/n): " SERVER_INSTANCE_ADD_UPDATES
 		fi
 
+		echo ""
+		echo "Use latest java version?"
+		echo ""
+		echo "If you want to use a diffrent java version you have to have it installed on your system. This is usefull for old versions of minecraft"
+		echo "and can also be changed in the server instance's environment file. You must enter the path to the java binary."
+		echo ""
+		echo "Example to enter: /usr/lib/jvm/java-8-openjdk/bin/java"
+		echo ""
+		read -p "Use default java version? (y/n): " SERVER_INSTANCE_JAVA_VER
+
+		if [[ "$SERVER_INSTANCE_JAVA_VER" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+			JAVA_VER="java"
+		else
+			echo ""
+			read -p "Enter the path to your java executable for this server instance: " JAVA_VER
+		fi
+
+		echo ""
+		echo "Use default java arguments or do you want to enter your own?"
+		echo ""
+		echo "Default arguments: -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true"
+		echo ""
+		read -p "Use default java arguments? (y/n): " SERVER_INSTANCE_JAVA_ARGS
+
+		if [[ "$SERVER_INSTANCE_JAVA_ARGS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+			JAVA_ARGS="-XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true"
+		else
+			echo ""
+			read -p "Enter your java arguments for this server instance: " JAVA_ARGS
+		fi
+
+		echo "JAVA=$JAVA_VER" > $ENV_DIR/${SERVER_INSTANCE_ADD}.env
+		echo "JAVA_ARGS=$JAVA_ARGS" >> $ENV_DIR/${SERVER_INSTANCE_ADD}.env
+
+		if [[ "$SERVER_INSTANCE_ADD_TYPE" == "1" ]]; then
+			echo "JAR_TYPE=server" >> $ENV_DIR/${SERVER_INSTANCE_ADD}.env
+		elif [[ "$SERVER_INSTANCE_ADD_TYPE" == "2" ]]; then
+			echo "JAR_TYPE=forge" >> $ENV_DIR/${SERVER_INSTANCE_ADD}.env
+		elif [[ "$SERVER_INSTANCE_ADD_TYPE" == "3" ]]; then
+			echo "JAR_TYPE=spigot" >> $ENV_DIR/${SERVER_INSTANCE_ADD}.env
+		fi
+
 		mkdir "$SRV_DIR/$SERVER_INSTANCE_ADD"
 
 		if [[ "$SERVER_INSTANCE_ADD_TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
@@ -268,20 +311,6 @@ script_add_server() {
 				if [[ "$SERVER_INSTANCE_ADD_UPDATES" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 					echo "$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service" >> $CONFIG_DIR/$SERVICE_NAME-server-update-list.txt
 				fi
-			elif [[ "$SERVER_INSTANCE_ADD_TYPE" == "2" ]]; then
-				mkdir -p "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service.d"
-				cat > /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service.d/override.conf <<- 'EOF'
-				[Service]
-				ExecStart=
-				ExecStart=/usr/bin/tmux -f /tmp/%u-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s McSrv 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar $(ls -v /srv/mcsrv/tmpfs/%i | grep -i "forge" | grep -i ".jar" | head -n 1)'
-				EOF
-			elif [[ "$SERVER_INSTANCE_ADD_TYPE" == "3" ]]; then
-				mkdir -p "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service.d"
-				cat > /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service.d/override.conf <<- 'EOF'
-				[Service]
-				ExecStart=
-				ExecStart=/usr/bin/tmux -f /tmp/%u-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s McSrv 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar $(ls -v /srv/mcsrv/tmpfs/%i | grep -i "spigot" | grep -i ".jar" | head -n 1)'
-				EOF
 			fi
 			echo "$SERVICE_NAME-tmpfs@$SERVER_INSTANCE_ADD.service" >> $CONFIG_DIR/$SERVICE_NAME-server-list.txt
 			systemctl --user enable --now $SERVICE_NAME-mkdir-tmpfs@$SERVER_INSTANCE_ADD.service
@@ -294,26 +323,13 @@ script_add_server() {
 				if [[ "$SERVER_INSTANCE_ADD_UPDATES" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 					echo "$SERVICE_NAME@$SERVER_INSTANCE_ADD.service" >> $CONFIG_DIR/$SERVICE_NAME-server-update-list.txt
 				fi
-			elif [[ "$SERVER_INSTANCE_ADD_TYPE" == "2" ]]; then
-				mkdir -p "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME@$SERVER_INSTANCE_ADD.service.d"
-				cat > /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME@$SERVER_INSTANCE_ADD.service.d/override.conf <<- 'EOF'
-				[Service]
-				ExecStart=
-				ExecStart=/usr/bin/tmux -f /tmp/%u-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s McSrv 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar $(ls -v /srv/mcsrv/%i | grep -i "forge" | grep -i ".jar" | head -n 1)'
-				EOF
-			elif [[ "$SERVER_INSTANCE_ADD_TYPE" == "3" ]]; then
-				mkdir -p "/srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME@$SERVER_INSTANCE_ADD.service.d"
-				cat > /srv/$SERVICE_NAME/.config/systemd/user/$SERVICE_NAME@$SERVER_INSTANCE_ADD.service.d/override.conf <<- 'EOF'
-				[Service]
-				ExecStart=
-				ExecStart=/usr/bin/tmux -f /tmp/%u-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s McSrv 'java -server -XX:+UseG1GC -Xmx6G -Xms1G -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfml.ignorePatchDiscrepancies=true -Dfml.ignoreInvalidMinecraftCertificates=true -jar $(ls -v /srv/mcsrv/%i | grep -i "spigot" | grep -i ".jar" | head -n 1)'
-				EOF
 			fi
 			echo "$SERVICE_NAME@$SERVER_INSTANCE_ADD.service" >> $CONFIG_DIR/$SERVICE_NAME-server-list.txt
 			systemctl --user enable $SERVICE_NAME@$SERVER_INSTANCE_ADD.service
 		fi
 		systemctl --user daemon-reload
-		if [ -f "$SRV_DIR/server.jar" ] || [ -f "$(ls -v $SRV_DIR/$SERVER_INSTANCE_ADD | grep -i "forge" | grep -i ".jar" | head -n 1)" ] || [ -f "$(ls -v $SRV_DIR/$SERVER_INSTANCE_ADD | grep -i "spigot" | grep -i ".jar" | head -n 1)" ]; then
+		echo "eula=true" > $SRV_DIR/$SERVER_INSTANCE_ADD/eula.txt
+		if [ -f "$SRV_DIR/$SERVER_INSTANCE_ADD/server.jar" ] || [ -f "$(ls -v $SRV_DIR/$SERVER_INSTANCE_ADD | grep -i "forge" | grep -i ".jar" | head -n 1)" ] || [ -f "$(ls -v $SRV_DIR/$SERVER_INSTANCE_ADD | grep -i "spigot" | grep -i ".jar" | head -n 1)" ]; then
 			read -p "Server instance $SERVER_INSTANCE_ADD added successfully. Do you want to start it? (y/n): " START_SERVER_INSTANCE_ADD
 			if [[ "$START_SERVER_INSTANCE_ADD" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				if [[ "$SERVER_INSTANCE_ADD_TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
@@ -372,6 +388,10 @@ script_remove_server() {
 			read -p "Delete the backup folder for $SERVER_INSTANCE_REMOVE? (y/n): " DELETE_SERVER_BACKUP
 			if [[ "$DELETE_SERVER_BACKUP" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				rm -rf $BCKP_DIR/$SERVER_INSTANCE_REMOVE
+			fi
+			read -p "Delete the environment file for $SERVER_INSTANCE_REMOVE? (y/n): " DELETE_SERVER_ENV_FILE
+			if [[ "$DELETE_SERVER_ENV_FILE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+				rm $ENV_DIR/${SERVER_INSTANCE_REMOVE}.env
 			fi
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] (Remove server instance) Server instance $SERVER_INSTANCE_REMOVE successfully removed." | tee -a "$LOG_SCRIPT"
 			break

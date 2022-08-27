@@ -16,7 +16,7 @@
 
 pkgname=mcsrv-script
 pkgver=1.4
-pkgrel=4
+pkgrel=5
 pkgdesc='Minecraft server script for running the server on linux.'
 arch=('x86_64')
 license=('GPL3')
@@ -52,21 +52,22 @@ source=('bash_profile'
         'mcsrv-tmpfs@.service')
 sha256sums=('f1e2f643b81b27d16fe79e0563e39c597ce42621ae7c2433fd5b70f1eeab5d63'
             '18b61b2c2fc5adcf28965126fe0b714112d584999476b1d4a8815a734e5d7abe'
-            '406546474619fec311478d3abbe6ab719e32b54c4554b614c01c19f8cbc78781'
+            '3ff8f2da145e55d34c3b659c6de4585d772eb0b0b33b3ec7d1c0eb202f5581cd'
             '0e533328a50d12981fc0624288234821175b5970363a6e2ba1de50bc0b2ccb8e'
             '5dc94b0c608f3662641e1cad2880dbbc0ec379ebe64ddd0b0bdd913053d79c19'
-            '257952bb07922e11fc215f61ec9d9173ef2d571cd5b835653c7fc2ad8e954c1c'
+            'c2690b717f0f54581834a7a5ebf9fd6b70f90ce8fad54a0017be22d3194fe4ab'
             '21b627f1fb96a41bbd084bac92a99d0f94085a07d9acb8c01f15007535feef10'
             '5116c82874543bd11f4976495fb30075fd076115ad877fcecb8e1a6a97f5471e'
             'e96dd020900db19d3932d5f83a69cad0222ccfdc99f72e6be57ebfb32fbedf6f'
             '59bb73d65729d1b8919d3ed0b3cbc7603b42499a1cdd7aaa5ad9f96d733f531b'
-            '066ae9068d9cc745ade3427263c77ada2323de5a0daf3d41e5bc8fefcaeeb460')
+            '0876de7358f8e35b924382c87e87aacae32e761323df9b1f3d90709efe72592c')
 
 package() {
   install -d -m0755 "${pkgdir}/usr/bin"
   install -d -m0755 "${pkgdir}/srv/mcsrv"
   install -d -m0755 "${pkgdir}/srv/mcsrv/server"
-  install -d -m0755 "${pkgdir}/srv/mcsrv/config"
+  install -d -m0755 "${pkgdir}/srv/avnsrv/config"
+  install -d -m0755 "${pkgdir}/srv/avnsrv/environments"
   install -d -m0755 "${pkgdir}/srv/mcsrv/updates"
   install -d -m0755 "${pkgdir}/srv/mcsrv/backups"
   install -d -m0755 "${pkgdir}/srv/mcsrv/logs"
